@@ -3,12 +3,12 @@ contextBridge.exposeInMainWorld('desktop', {
   showMenu: (name, x, y) => ipcRenderer.send('show-menu', { name, x, y }),
   openFiles: () => ipcRenderer.invoke('pick-files'),
   recentFiles: () => ipcRenderer.invoke('recent-files'),
+  openRecent: id => ipcRenderer.invoke('open-recent', id),
   clearRecents: () => ipcRenderer.invoke('clear-recents'),
   openDropped: files => {
     const paths = Array.from(files).map(file => webUtils.getPathForFile(file));
     return paths.every(Boolean) ? ipcRenderer.invoke('open-dropped', paths).then(() => true) : Promise.resolve(false);
   },
-  fullscreen: () => ipcRenderer.invoke('fullscreen'),
   print: () => ipcRenderer.invoke('print'),
   saveFile: (name, bytes) => ipcRenderer.invoke('save-file', { name, bytes }),
   saveText: payload => ipcRenderer.invoke('save-text', payload),

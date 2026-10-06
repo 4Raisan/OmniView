@@ -51,19 +51,38 @@ class OmniViewApp {
     this.recentListEl = document.getElementById('recent-files-list');
     this.sidebarDetailsEl = document.getElementById('sidebar-file-details');
     this.contextToolbar = document.getElementById('context-toolbar');
-    
-    
-    
-    
-    
-    
-    
-    
-    
+    this.viewerCanvas = document.getElementById('viewer-canvas');
+    this.dropOverlay = document.getElementById('drop-overlay');
+    this.statusFilename = document.getElementById('status-filename');
+    this.statusType = document.getElementById('status-type');
+    this.statusSize = document.getElementById('status-size');
+    this.themeSelect = document.getElementById('theme-select');
+    this.lastDarkTheme = this.theme === 'light' ? 'dark' : this.theme;
+    this.themeToggleBtn = document.getElementById('btn-toggle-theme');
+    this.sidebarToggleBtn = document.getElementById('btn-toggle-sidebar');
 
   }
 
-  
+  init() {
+    this.applyTheme(this.theme);
+    this.applySidebarState();
+    this.setupSidebarResize();
+    this.bindEvents();
+    this.tabsResizeObserver = new ResizeObserver(() => this.fitTabs());
+    this.tabsResizeObserver.observe(this.tabsContainer);
+    document.addEventListener('selectionchange', () => {
+      const tab = this.tabs.find(tab => tab.id === this.activeTabId);
+      const selection = window.getSelection();
+      const area = tab?.surface?.querySelector('.text-editor');
+      const selected = (area && area.selectionEnd > area.selectionStart) || (!!selection && !selection.isCollapsed && tab?.surface?.contains(selection.anchorNode) && tab.surface.contains(selection.focusNode));
+      
+    });
+    
+    
+    
+    
+    
+  }
 
   
 
