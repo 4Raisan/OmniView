@@ -209,26 +209,41 @@ class OmniViewApp {
         event.preventDefault(); this.tabs.find(tab => tab.id === this.activeTabId)?.viewer?.editor?.save(event.shiftKey);
       }
     });
-    
-    
-    
-    
-    
-    
-    
-    
+    document.getElementById('font-size-select').onchange = event => this.applyFontSize(event.target.value);
+    document.getElementById('tabs-left').onclick = () => this.tabsContainer.scrollBy({ left: -this.tabsContainer.clientWidth * 0.8 });
+    document.getElementById('tabs-right').onclick = () => this.tabsContainer.scrollBy({ left: this.tabsContainer.clientWidth * 0.8 });
+    this.tabsContainer.onwheel = event => {
+      if (this.tabsContainer.scrollWidth > this.tabsContainer.clientWidth) {
+        event.preventDefault(); this.tabsContainer.scrollLeft += event.deltaY || event.deltaX;
+      }
+    };
+    window.addEventListener('focus', () => this.renderRecentFiles());
+    window.desktop?.onPrint(() => this.printActiveDocument());
+    window.desktop?.onSave(saveAs => this.tabs.find(tab => tab.id === this.activeTabId)?.viewer?.editor?.save(saveAs));
+    window.desktop?.onClose(() => this.activeTabId && this.closeTab(this.activeTabId));
     // Open file button
-    
+    document.getElementById('btn-open-file')?.addEventListener('click', () => {
+      this.openFilePicker();
+    });
 
-    
+    this.fileInput?.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files || []);
+      if (!window.desktop || !await window.desktop.openDropped(files)) files.forEach(f => this.loadFile(f));
+      this.fileInput.value = '';
+    });
 
-    
+    this.themeSelect?.addEventListener('change', event => this.applyTheme(event.target.value));
 
     // Theme toggle
-    
+    this.themeToggleBtn?.addEventListener('click', () => {
+      this.applyTheme(this.theme === 'light' ? this.lastDarkTheme : 'light');
+    });
 
     // Sidebar toggle
-    
+    this.sidebarToggleBtn?.addEventListener('click', () => {
+      
+      
+    });
 
     // Clear recent files
     
