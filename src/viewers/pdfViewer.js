@@ -145,18 +145,84 @@ export class PdfViewer {
     }
     this.scrollArea.append(fragment);
     this.layoutPages();
-    
-    
-    
+    this.scrollArea.addEventListener('scroll', () => {
+      cancelAnimationFrame(this.scrollFrame);
+      this.scrollFrame = requestAnimationFrame(() => {
+        this.trackCurrentPage();
+        this.queueVisiblePages();
+      });
+    });
+    this.resizeObserver = new ResizeObserver(() => this.queueVisiblePages());
+    this.resizeObserver.observe(this.scrollArea);
   }
 
-  
+  layoutPages() {
+    this.renderGeneration++;
+    this.renderTask?.cancel();
+    this.renderQueue.clear();
+    for (const item of this.pages) {
+      const viewport = item.page.getViewport({ scale: this.scale, rotation: this.rotation });
+      item.section.style.width = `${Math.floor(viewport.width)}px`;
+      item.section.style.height = `${Math.floor(viewport.height)}px`;
+      item.canvas.width = item.canvas.height = 0;
+      item.canvas.style.width = '100%';
+      item.canvas.style.height = '100%';
+      item.rendered = false;
+      item.section.classList.remove('rendered');
+    }
+    this.layoutScale = this.scale;
+    this.layoutRotation = this.rotation;
+  }
 
-  
+  async renderPage(number) {
+    if (!this.scrollArea || this.destroyed) return;
+    number = Math.max(1, Math.min(this.pdfDoc.numPages, number));
+    if (this.layoutScale !== this.scale || this.layoutRotation !== this.rotation) this.layoutPages();
+    this.currentPageNum = number;
+    const item = this.pages[number - 1];
+    this.scrollArea.scrollTop += item.section.getBoundingClientRect().top - this.scrollArea.getBoundingClientRect().top - 24;
+    this.updatePageIndicator();
+    this.queueVisiblePages();
+  }
 
-  
+  trackCurrentPage() {
+    if (!this.scrollArea.clientHeight) return;
+    if (this.scrollArea.scrollTop > 0 && this.scrollArea.scrollHeight - this.scrollArea.clientHeight - this.scrollArea.scrollTop <= 2) {
+      this.currentPageNum = this.pdfDoc.numPages;
+      this.updatePageIndicator();
+      return;
+    }
+    const top = this.scrollArea.getBoundingClientRect().top + 40;
+    let current = 1;
+    for (const item of this.pages) {
+      if (item.section.getBoundingClientRect().top <= top) current = Number(item.section.dataset.page);
+      else break;
+    }
+    this.currentPageNum = current;
+    this.updatePageIndicator();
+  }
 
-  
+  queueVisiblePages() {
+    if (!this.scrollArea?.clientHeight || this.destroyed || this.suspended) return;
+    const bounds = this.scrollArea.getBoundingClientRect();
+    for (let index = 0; index < this.pages.length; index++) {
+      const item = this.pages[index];
+      const rect = item.section.getBoundingClientRect();
+      if (rect.bottom >= bounds.top - 600 && rect.top <= bounds.bottom + 600) {
+        if (!item.rendered) this.renderQueue.add(index);
+      } else {
+        this.renderQueue.delete(index);
+        // Release far-away canvases; retain the page-sized placeholder.
+        if (item.rendered && (rect.bottom < bounds.top - 2000 || rect.top > bounds.bottom + 2000)) {
+          item.canvas.width = item.canvas.height = 0;
+          item.rendered = false;
+          
+          
+        }
+      }
+    }
+    
+  }
 
   
 
