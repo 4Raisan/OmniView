@@ -1,0 +1,20 @@
+# Recreated by npm ci / npm run build
+node_modules/
+dist/
+release/
+test-results/
+playwright-report/
+graphify-out/
+
+# Local configuration and signing credentials
+.env
+.env.*
+*.pfx
+*.p12
+*.key
+*.log
+audit-report.json
+/benchmark-results.json
+/editing-results.json
+.DS_Store
+Thumbs.db
