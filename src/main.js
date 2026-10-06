@@ -75,18 +75,38 @@ class OmniViewApp {
       const selection = window.getSelection();
       const area = tab?.surface?.querySelector('.text-editor');
       const selected = (area && area.selectionEnd > area.selectionStart) || (!!selection && !selection.isCollapsed && tab?.surface?.contains(selection.anchorNode) && tab.surface.contains(selection.focusNode));
-      
+      this.contextToolbar.querySelectorAll('.document-copy').forEach(button => button.classList.toggle('selection-ready', selected));
     });
+    document.addEventListener('select', () => document.dispatchEvent(new Event('selectionchange')), true);
+    window.addEventListener('beforeunload', event => {
+      if (this.tabs.some(tab => tab.viewer?.editor?.dirty)) { event.preventDefault(); event.returnValue = false; }
+    });
+    this.applyFontSize(localStorage.getItem('multiviewer_font_size') || '1');
+    this.renderRecentFiles();
+    this.renderWelcomeScreen();
+  }
+
+  applyTheme(theme) {
+    if (!['dark', 'midnight', 'graphite', 'forest', 'violet', 'ember', 'light'].includes(theme)) theme = 'dark';
+    this.theme = theme;
+    if (theme !== 'light') this.lastDarkTheme = theme;
+    if (this.themeSelect) this.themeSelect.value = theme;
+    document.documentElement.setAttribute('data-theme', theme);
+    setStoredTheme(theme);
+    this.sizeThemePicker();
+    if (this.themeToggleBtn) {
+      this.themeToggleBtn.innerHTML = theme !== 'light' ? icons.sun : icons.moon;
+      this.themeToggleBtn.title = theme !== 'light' ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+    }
+  }
+
+  applyFontSize(value) {
     
     
     
     
     
   }
-
-  
-
-  
 
   
 

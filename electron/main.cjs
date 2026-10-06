@@ -68,7 +68,81 @@ async function openPaths(paths) {
 
 async function pickFiles() {
   const result = await dialog.showOpenDialog(mainWindow, { properties: ['openFile', 'multiSelections'] });
-  
+  if (!result.canceled) await openPaths(result.filePaths);
 }
 
-
+if (!app.requestSingleInstanceLock()) app.quit();
+else {
+  pendingPaths = argumentFiles(process.argv.slice(app.isPackaged ? 1 : 2));
+  app.on('second-instance', (_event, argv) => {
+    if (mainWindow?.isMinimized()) mainWindow.restore();
+    mainWindow?.focus();
+    openPaths(argumentFiles(argv.slice(1)));
+  });
+  app.whenReady().then(async () => {
+    protocol.handle('viewer-media', async request => {
+      const token = new URL(request.url).hostname;
+      const target = mediaFiles.get(token);
+      if (!target) return new Response('Not found', { status: 404 });
+      try {
+        const { size } = await fs.stat(target);
+        const range = request.headers.get('range');
+        let start = 0, end = size - 1;
+        if (range) {
+          const match = /^bytes=(\d*)-(\d*)$/.exec(range);
+          if (!match || (!match[1] && !match[2])) return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${size}` } });
+          start = match[1] ? Number(match[1]) : Math.max(0, size - Number(match[2]));
+          
+          
+        }
+        
+        
+        
+        
+        
+        
+        
+         
+        
+        
+        
+        
+      } catch {  }
+    });
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    // Documents stay local: block external resources, including tracking images.
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+  });
+  
+}

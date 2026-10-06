@@ -9,9 +9,9 @@ contextBridge.exposeInMainWorld('desktop', {
     const paths = Array.from(files).map(file => webUtils.getPathForFile(file));
     return paths.every(Boolean) ? ipcRenderer.invoke('open-dropped', paths).then(() => true) : Promise.resolve(false);
   },
+  fullscreen: () => ipcRenderer.invoke('fullscreen'),
   print: () => ipcRenderer.invoke('print'),
   saveFile: (name, bytes) => ipcRenderer.invoke('save-file', { name, bytes }),
-  saveText: payload => ipcRenderer.invoke('save-text', payload),
   confirmEditClose: name => ipcRenderer.invoke('confirm-edit-close', name),
   releaseEditFile: token => ipcRenderer.send('release-edit-file', token),
   releaseMedia: token => ipcRenderer.send('release-media', token),
