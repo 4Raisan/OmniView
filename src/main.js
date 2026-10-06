@@ -152,19 +152,79 @@ class OmniViewApp {
       if (dragging) setWidth(event.clientX - this.sidebar.getBoundingClientRect().left);
     };
     const stop = () => { dragging = false; document.body.classList.remove('resizing-sidebar'); };
-    
-    
-    
-    
-    
-    
+    handle.onpointerup = stop;
+    handle.onpointercancel = stop;
+    handle.onlostpointercapture = stop;
+    handle.ondblclick = () => setWidth(280);
+    handle.onkeydown = event => {
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        event.preventDefault();
+        setWidth(this.sidebarWidth + (event.key === 'ArrowRight' ? 20 : -20));
+      } else if (event.key === 'Home') { event.preventDefault(); setWidth(280); }
+    };
+    window.addEventListener('resize', () => setWidth(this.sidebarWidth));
   }
 
-  
+  openFilePicker() {
+    if (window.desktop) window.desktop.openFiles();
+    else this.fileInput?.click();
+  }
 
-  
+  async printActiveDocument() {
+    const tab = this.tabs.find(t => t.id === this.activeTabId);
+    if (!tab) return;
+    try {
+      if (tab.viewer?.print) await tab.viewer.print();
+      else if (window.desktop) await window.desktop.print();
+      else window.print();
+    } catch (error) {
+      alert('Could not print: ' + error.message);
+    }
+  }
 
-  
+  bindEvents() {
+    document.querySelectorAll('[data-menu]').forEach(button => {
+      
+    });
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    // Open file button
+    
+
+    
+
+    
+
+    // Theme toggle
+    
+
+    // Sidebar toggle
+    
+
+    // Clear recent files
+    
+
+    // Global Drag and Drop
+    
+
+    
+
+    
+
+    // Global Keyboard Shortcuts
+    
+  }
 
   
 
