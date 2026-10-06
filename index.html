@@ -36,3 +36,20 @@
     </div>
 
     <div class="header-right">
+      <select id="font-size-select" aria-label="Font size" title="Text size only">
+        <option value="0.8">A 80%</option><option value="0.9">A 90%</option>
+        <option value="1" selected>A 100%</option><option value="1.1">A 110%</option>
+        <option value="1.25">A 125%</option><option value="1.5">A 150%</option>
+      </select>
+      <label class="theme-picker" title="Choose a theme">
+        <span aria-hidden="true">◐</span>
+        <select id="theme-select" aria-label="Theme">
+          <optgroup label="Dark themes">
+            <option value="dark">Slate</option>
+            <option value="midnight">Midnight</option>
+            <option value="graphite">Graphite</option>
+            <option value="forest">Forest</option>
+            <option value="violet">Violet</option>
+            <option value="ember">Ember</option>
+          </optgroup>
+          <option value="light">Light</option>

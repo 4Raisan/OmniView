@@ -241,19 +241,41 @@ class OmniViewApp {
 
     // Sidebar toggle
     this.sidebarToggleBtn?.addEventListener('click', () => {
-      
-      
+      this.sidebarOpen = !this.sidebarOpen;
+      this.applySidebarState();
     });
 
     // Clear recent files
-    
+    document.getElementById('btn-clear-recent')?.addEventListener('click', async () => {
+      await window.desktop?.clearRecents();
+      clearRecentFiles();
+      this.renderRecentFiles();
+    });
 
     // Global Drag and Drop
-    
+    window.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.dropOverlay?.classList.add('active');
+    });
 
-    
+    window.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.relatedTarget === null || e.clientX === 0) {
+        this.dropOverlay?.classList.remove('active');
+      }
+    });
 
-    
+    window.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.dropOverlay?.classList.remove('active');
+      const files = Array.from(e.dataTransfer.files || []);
+      if (files.length) {
+        
+      }
+    });
 
     // Global Keyboard Shortcuts
     
