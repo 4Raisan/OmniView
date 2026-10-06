@@ -18,16 +18,48 @@ const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 let recentFiles = [];
 let recentWrite = Promise.resolve();
 const historyPath = () => path.join(app.getPath('userData'), 'recent-files.json');
+function saveHistory() {
+  const snapshot = JSON.stringify(recentFiles);
+  recentWrite = recentWrite.catch(() => {}).then(async () => {
+    await fs.mkdir(app.getPath('userData'), { recursive: true });
+    await fs.writeFile(historyPath() + '.tmp', snapshot);
+    await fs.rename(historyPath() + '.tmp', historyPath());
+  });
+  return recentWrite;
+}
 
+const { version: viewerVersion } = require('../package.json');
+let mainWindow;
+let rendererReady = false;
+let pendingPaths = [];
+const MAX_FILE_SIZE = 256 * 1024 * 1024;
+const argumentFiles = argv => argv.filter(arg => !arg.startsWith('-') && path.isAbsolute(arg) && !/\.exe$/i.test(arg));
 
-
-
-
-
-
-
-
-
+async function openPaths(paths) {
+  if (!mainWindow || !rendererReady) {
+    pendingPaths.push(...paths);
+    return;
+  }
+  for (const filePath of paths) {
+    try {
+      const stat = await fs.stat(filePath);
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+    } catch (error) {
+      
+    }
+  }
+}
 
 
 
