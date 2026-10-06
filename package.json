@@ -13,5 +13,14 @@
     "marked": "^18.1.0",
     "pdfjs-dist": "^6.4.299",
     "xlsx": "file:vendor/xlsx-0.20.3.tgz"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.0",
+    "electron": "^40.10.2",
+    "electron-builder": "^26.15.3",
+    "vite": "^8.3.4"
+  },
+  "scripts": {
+    "dev": "vite"
   }
 }
