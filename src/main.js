@@ -351,11 +351,53 @@ class OmniViewApp {
     }
   }
 
-  
+  createTab({ name, type, size, data, objectUrl = null, filePath = null, editMeta = null, mediaToken = null }) {
+    const id = 'tab_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+    const newTab = { id, name, type, size, data, objectUrl, filePath, editMeta, mediaToken };
+    this.tabs.push(newTab);
+    this.renderTabsList();
+    this.activateTab(id);
+  }
 
-  
+  activateTab(tabId) {
+    const tab = this.tabs.find(t => t.id === tabId);
+    if (!tab) return;
 
-  
+    this.tabs.find(t => t.id === this.activeTabId)?.viewer?.mediaEl?.pause();
+    if (this.activeTabId !== tabId) this.tabs.find(t => t.id === this.activeTabId)?.viewer?.suspend?.();
+    this.activeTabId = tabId;
+    this.renderTabsList();
+    clearTimeout(this.viewTimer);
+    this.viewerCanvas.replaceChildren(tab.surface);
+    this.contextToolbar.replaceChildren(tab.toolbar);
+    // Coalesce rapid tab changes and multi-file opening before allocating a preview.
+    if (tab.type === FILE_TYPES.MEDIA || tab.viewer?.editor?.editing) this.renderActiveDocument(tab);
+    else this.viewTimer = setTimeout(() => {
+      if (!tab.closed && this.activeTabId === tab.id) this.renderActiveDocument(tab);
+    }, 50);
+    this.updateStatus(tab);
+    this.updateSidebarDetails(tab);
+  }
+
+  async closeTab(tabId) {
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+    
+  }
 
   
 

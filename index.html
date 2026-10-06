@@ -70,3 +70,22 @@
         <span>Recent Files</span>
         <button class="btn-icon" id="btn-clear-recent" title="Clear History" style="width: 20px; height: 20px;">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="recent-files-list" id="recent-files-list"></div>
+      <div class="sidebar-file-details" id="sidebar-file-details">
+        <h4>Active File</h4>
+        <div style="color: var(--text-muted); font-size: 11px;">No active document</div>
+      </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="app-main">
+      <div class="context-toolbar" id="context-toolbar"></div>
+      <div class="viewer-canvas" id="viewer-canvas"></div>
+    </main>
+
+    <!-- Drag & Drop Overlay -->
+    <div class="drop-overlay" id="drop-overlay">
+      <div class="drop-overlay-icon">📥</div>
+      <h2>Drop file here to open instantly</h2>
