@@ -116,15 +116,27 @@ export function detectFileType(filename = '', mimeType = '') {
 
   if (mimeType.startsWith('image/')) return FILE_TYPES.IMAGE;
   if (mimeType.startsWith('video/') || mimeType.startsWith('audio/')) return FILE_TYPES.MEDIA;
-  
-  
-  
-  
+  if (mimeType === 'application/pdf') return FILE_TYPES.PDF;
+  if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) return FILE_TYPES.EXCEL;
+  if (mimeType.includes('wordprocessingml') || mimeType.includes('msword')) return FILE_TYPES.WORD;
+  if (mimeType.startsWith('text/')) return FILE_TYPES.CODE;
 
-   // default to text/code viewer as ultra-safe fallback
+  return FILE_TYPES.CODE; // default to text/code viewer as ultra-safe fallback
 }
 
-
+export function getFileTypeIcon(type) {
+  switch (type) {
+    case FILE_TYPES.EXCEL: return icons.fileSpreadsheet;
+    case FILE_TYPES.WORD: return icons.fileWord;
+    case FILE_TYPES.PDF: return icons.filePdf;
+    case FILE_TYPES.MARKDOWN: return icons.fileMarkdown;
+    case FILE_TYPES.IMAGE: return icons.fileImage;
+    case FILE_TYPES.MEDIA: return icons.fileMedia;
+    case FILE_TYPES.ZIP: return icons.fileArchive;
+    case FILE_TYPES.CODE: 
+    default: 
+  }
+}
 
 
 

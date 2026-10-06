@@ -464,3 +464,104 @@ body {
   text-transform: uppercase;
 }
 
+/* Empty State / Welcome Dropzone */
+.empty-state-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.drop-hero-box {
+  background: var(--bg-secondary);
+  border: 2px dashed var(--border-color);
+  border-radius: 16px;
+  padding: 48px 36px;
+  max-width: 580px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  box-shadow: var(--shadow-md);
+  transition: all 0.2s ease;
+}
+
+.drop-hero-box:hover {
+  border-color: var(--accent-color);
+  box-shadow: var(--shadow-lg);
+}
+
+.hero-icon-circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--accent-light);
+  color: var(--accent-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-title {
+  font-size: calc(20px * var(--font-scale, 1));
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.hero-subtitle {
+  font-size: calc(14px * var(--font-scale, 1));
+  color: var(--text-secondary);
+  max-width: 440px;
+  line-height: 1.5;
+}
+
+.supported-formats-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.format-pill {
+  font-size: calc(11px * var(--font-scale, 1));
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+/* Drag & Drop Window Overlay */
+.drop-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  color: #fff;
+  border: 3px dashed var(--accent-color);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.drop-overlay.active {
+  opacity: 1;
+}
+
+.drop-overlay-icon {
+  font-size: calc(40px * var(--font-scale, 1));
+  animation: bounce 1s infinite alternate;
+}
+

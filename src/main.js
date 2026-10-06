@@ -380,22 +380,35 @@ class OmniViewApp {
   }
 
   async closeTab(tabId) {
-    
-    
+    const index = this.tabs.findIndex(t => t.id === tabId);
+    if (index === -1) return;
 
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+    const tab = this.tabs[index];
+    if (tab.viewer?.editor && !await tab.viewer.editor.canClose()) return false;
+    const currentIndex = this.tabs.indexOf(tab);
+    if (currentIndex < 0) return true;
+    window.desktop?.releaseEditFile(tab.viewer?.editor?.meta.token || tab.editMeta?.token);
+    if (tab.mediaToken) window.desktop.releaseMedia(tab.mediaToken);
+    tab.closed = true;
+    tab.viewer?.destroy?.();
+    tab.viewer?.mediaEl?.pause();
+    if (tab.objectUrl) URL.revokeObjectURL(tab.objectUrl);
+    this.tabs.splice(currentIndex, 1);
 
-    
+    if (this.activeTabId === tabId) {
+      if (this.tabs.length > 0) {
+        const nextTab = this.tabs[Math.max(0, currentIndex - 1)];
+        this.activateTab(nextTab.id);
+      } else {
+        this.activeTabId = null;
+        this.renderTabsList();
+        this.renderWelcomeScreen();
+        this.clearStatus();
+        
+      }
+    } else {
+      
+    }
     
   }
 
