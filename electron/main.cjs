@@ -112,12 +112,33 @@ else {
         return new Response(Readable.toWeb(stream), { status: range ? 206 : 200, headers });
       } catch { return new Response('Media unavailable', { status:404 }); }
     });
-    
-    
-    
-    
-    
-    
+    try {
+      const saved = JSON.parse(await fs.readFile(historyPath(), 'utf8'));
+      if (Array.isArray(saved)) recentFiles = saved.filter(item => typeof item.id === 'string' && typeof item.name === 'string' && typeof item.path === 'string' && path.isAbsolute(item.path)).slice(0, 25);
+    } catch { /* A new install or invalid history starts empty. */ }
+    mainWindow = new BrowserWindow({
+      width: 1280, height: 850, minWidth: 760, minHeight: 540,
+      title: 'OmniView', icon: path.join(__dirname, '..', 'resources', 'app-icon.png'), backgroundColor: '#18181b',
+      titleBarStyle: 'hidden', titleBarOverlay: { color: '#18181b', symbolColor: '#f4f4f5', height: 36 },
+      webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true }
+    });
+    mainWindow.setMenuBarVisibility(false);
+    ipcMain.on('show-menu', (_event, { name, x, y }) => {
+      if (!['File', 'Edit', 'View', 'Help'].includes(name)) return;
+      const submenu = Menu.getApplicationMenu()?.items.find(item => item.label === name)?.submenu;
+      const zoom = mainWindow.webContents.getZoomFactor();
+      const bounds = mainWindow.getContentBounds();
+      submenu?.popup({ window: mainWindow, x: Math.max(0, Math.min(bounds.width - 1, Math.round((Number(x) || 0) * zoom))), y: Math.max(0, Math.min(bounds.height - 1, Math.round((Number(y) || 36) * zoom))) });
+    });
+    mainWindow.on('page-title-updated', event => { event.preventDefault(); mainWindow.setTitle('OmniView'); });
+    mainWindow.webContents.on('before-input-event', (event, input) => {
+      if (input.type === 'keyDown' && (input.key === 'F5' || ((input.control || input.meta) && input.key.toLowerCase() === 'r'))) {
+        event.preventDefault(); mainWindow.webContents.send('request-reload');
+      }
+      if (input.type === 'keyDown' && (input.control || input.meta) && input.key.toLowerCase() === 's') {
+        event.preventDefault(); 
+      }
+    });
     
     
     

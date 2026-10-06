@@ -101,18 +101,48 @@ class OmniViewApp {
   }
 
   applyFontSize(value) {
+    if (!['0.8', '0.9', '1', '1.1', '1.25', '1.5'].includes(String(value))) value = '1';
+    document.documentElement.style.setProperty('--font-scale', value);
+    document.getElementById('font-size-select').value = value;
+    localStorage.setItem('multiviewer_font_size', value);
+    this.sizeThemePicker();
+  }
+
+  sizeThemePicker() {
+    if (!this.themeSelect) return;
+    const context = document.createElement('canvas').getContext('2d');
+    context.font = getComputedStyle(this.themeSelect).font;
+    this.themeSelect.style.width = `${Math.ceil(context.measureText(this.themeSelect.selectedOptions[0].textContent).width + 26)}px`;
+  }
+
+  applySidebarState() {
+    if (this.sidebar) {
+      this.sidebar.classList.toggle('collapsed', !this.sidebarOpen);
+    }
+    setStoredSidebarState(this.sidebarOpen);
+  }
+
+  setupSidebarResize() {
+    const handle = document.createElement('div');
+    handle.id = 'sidebar-resize-handle';
+    handle.setAttribute('role', 'separator');
+    handle.setAttribute('aria-label', 'Resize left panel');
+    handle.setAttribute('aria-orientation', 'vertical');
+    handle.tabIndex = 0;
+    
+    
+    
+    
+    
+    
+    
+    
     
     
     
     
     
   }
-
-  
-
-  
-
-  
 
   
 
