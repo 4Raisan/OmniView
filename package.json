@@ -21,6 +21,10 @@
     "vite": "^8.3.4"
   },
   "scripts": {
-    "dev": "vite"
+    "dev": "vite",
+    "build": "vite build && node scripts/copy-pdf-assets.mjs",
+    "preview": "vite preview",
+    "start": "electron .",
+    "desktop": "npm run build && electron ."
   }
 }
