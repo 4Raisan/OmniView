@@ -1,0 +1,17 @@
+{
+  "name": "multi-viewer",
+  "version": "1.7.0",
+  "description": "OmniView — Any File. One Viewer. Offline desktop file viewer",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "author": "4Raisan",
+  "dependencies": {
+    "docx-preview": "^0.4.1",
+    "dompurify": "^3.4.16",
+    "highlight.js": "^11.12.0",
+    "jszip": "^3.10.2",
+    "marked": "^18.1.0",
+    "pdfjs-dist": "^6.4.299",
+    "xlsx": "file:vendor/xlsx-0.20.3.tgz"
+  }
+}
