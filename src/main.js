@@ -184,13 +184,31 @@ class OmniViewApp {
 
   bindEvents() {
     document.querySelectorAll('[data-menu]').forEach(button => {
-      
+      button.onclick = () => {
+        const rect = button.getBoundingClientRect();
+        window.desktop?.showMenu(button.dataset.menu, rect.left, rect.bottom);
+      };
     });
-    
-    
-    
-    
-    
+    window.desktop?.onFile(({ name, bytes, filePath, editToken }) => this.loadFile(new File([bytes], name), filePath, editToken));
+    window.desktop?.onMedia(async ({ name, size, filePath, mediaToken, url }) => {
+      const existing = this.tabs.find(tab => tab.filePath?.toLowerCase() === filePath.toLowerCase());
+      if (existing) await this.closeTab(existing.id);
+      this.createTab({ name, size, type: FILE_TYPES.MEDIA, data: url, filePath, mediaToken });
+      this.renderRecentFiles();
+    });
+    window.desktop?.onRequestClose(async () => {
+      for (const tab of this.tabs) if (tab.viewer?.editor && !await tab.viewer.editor.canClose()) return;
+      window.desktop.allowClose();
+    });
+    window.desktop?.onRequestReload(async () => {
+      for (const tab of this.tabs) if (tab.viewer?.editor && !await tab.viewer.editor.canClose()) { window.desktop.cancelReload(); return; }
+      window.desktop.allowReload();
+    });
+    document.addEventListener('keydown', event => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+        event.preventDefault(); this.tabs.find(tab => tab.id === this.activeTabId)?.viewer?.editor?.save(event.shiftKey);
+      }
+    });
     
     
     
