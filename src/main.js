@@ -404,17 +404,50 @@ class OmniViewApp {
         this.renderTabsList();
         this.renderWelcomeScreen();
         this.clearStatus();
-        
+        this.clearSidebarDetails();
       }
     } else {
-      
+      this.renderTabsList();
     }
-    
+    return true;
   }
 
-  
+  renderTabsList() {
+    if (!this.tabsContainer) return;
+    this.tabsContainer.innerHTML = '';
 
-  
+    this.tabs.forEach(tab => {
+      const tabEl = document.createElement('div');
+      tabEl.dataset.tabId = tab.id;
+      tabEl.dataset.fullName = tab.name;
+      tabEl.className = `file-tab ${tab.id === this.activeTabId ? 'active' : ''}`;
+      tabEl.innerHTML = `
+        <span class="tab-icon">${getFileTypeIcon(tab.type)}</span>
+        <span class="tab-title" title="${escapeHtml(tab.name)}">${tab.viewer?.editor?.dirty ? '● ' : ''}${escapeHtml(tab.name)}</span>
+        <span class="tab-close" title="Close">${icons.close}</span>
+      `;
+
+      tabEl.onclick = () => this.activateTab(tab.id);
+
+      const closeBtn = tabEl.querySelector('.tab-close');
+      closeBtn.onclick = (e) => {
+        e.stopPropagation();
+        this.closeTab(tab.id);
+      };
+
+      this.tabsContainer.appendChild(tabEl);
+    });
+    this.tabsContainer.querySelector('.file-tab.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    this.fitTabs();
+  }
+
+  fitTabs() {
+    
+    
+    
+    
+    
+  }
 
   
 

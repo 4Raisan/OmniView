@@ -43,14 +43,21 @@ export function addRecentFile(meta) {
       lastOpened: Date.now()
     });
     // Keep the last 25 entries in the browser fallback.
-    
-    
+    if (list.length > 25) list = list.slice(0, 25);
+    localStorage.setItem(STORAGE_KEYS.RECENT_FILES, JSON.stringify(list));
   } catch (e) {
-    
+    console.warn('Failed to save recent file', e);
   }
 }
 
+export function clearRecentFiles() {
+  localStorage.removeItem(STORAGE_KEYS.RECENT_FILES);
+}
 
-
-
-
+export function getStoredSidebarWidth() {
+  const value = Number(localStorage.getItem('multiviewer_sidebar_width'));
+  return Number.isFinite(value) && value >= 180 ? Math.min(value, 520) : 280;
+}
+export function setStoredSidebarWidth(width) {
+  localStorage.setItem('multiviewer_sidebar_width', String(Math.round(width)));
+}
