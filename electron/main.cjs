@@ -136,18 +136,31 @@ else {
         event.preventDefault(); mainWindow.webContents.send('request-reload');
       }
       if (input.type === 'keyDown' && (input.control || input.meta) && input.key.toLowerCase() === 's') {
-        event.preventDefault(); 
+        event.preventDefault(); mainWindow.webContents.send('save-document', input.shift);
       }
     });
-    
-    
-    
+    const entry = path.join(__dirname, '..', 'dist', 'index.html');
+    mainWindow.webContents.on('will-navigate', event => event.preventDefault());
+    mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+      if (/^https?:\/\//i.test(url)) shell.openExternal(url);
+      return { action: 'deny' };
+    });
     // Documents stay local: block external resources, including tracking images.
-    
-    
-    
-    
-    
+    mainWindow.webContents.session.webRequest.onBeforeRequest((details, callback) => {
+      callback({ cancel: /^https?:\/\//i.test(details.url) });
+    });
+    ipcMain.handle('pick-files', pickFiles);
+    ipcMain.handle('recent-files', async () => Promise.all(recentFiles.map(async item => {
+      try {
+        const stat = await fs.stat(item.path);
+        return { ...item, size: stat.size, missing: !stat.isFile() };
+      } catch { return { ...item, missing: true }; }
+    })));
+    ipcMain.handle('open-recent', async (_event, id) => {
+      const item = recentFiles.find(item => item.id === id);
+      if (item) await openPaths([item.path]);
+    });
+    ipcMain.handle('clear-recents', async () => { recentFiles = [];  });
     
     
     
