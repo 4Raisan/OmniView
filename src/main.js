@@ -310,7 +310,45 @@ class OmniViewApp {
     let data;
     let editMeta = null;
 
-    
+    try {
+      if (file.size > 256 * 1024 * 1024) throw new Error('Files larger than 256 MB are not supported.');
+      if (type === FILE_TYPES.UNKNOWN) throw new Error('Unsupported file format. Choose a document, text file, image, media file or ZIP.');
+      if (/\.(doc|rtf)$/i.test(file.name)) throw new Error('Please convert this legacy document to DOCX using Word or LibreOffice.');
+      if (type === FILE_TYPES.IMAGE || type === FILE_TYPES.MEDIA) {
+        data = URL.createObjectURL(file);
+      } else if (type === FILE_TYPES.MARKDOWN || type === FILE_TYPES.CODE) {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const bom = bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf;
+        let validUtf8 = true;
+        try { data = new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
+        catch { validUtf8 = false; data = await readFileAsText(file); }
+        editMeta = { eligible: validUtf8 && !data.includes('\0') && file.size <= 2 * 1024 * 1024, bom, token: editToken, lineEnding: data.includes('\r\n') ? '\r\n' : '\n' };
+      } else {
+        // Excel, Word, PDF, Zip
+        data = await readFileAsArrayBuffer(file);
+      }
+
+      const existing = filePath && this.tabs.find(tab => tab.filePath?.toLowerCase() === filePath.toLowerCase());
+      if (existing && !await this.closeTab(existing.id)) return;
+      this.createTab({
+        name: file.name,
+        type: type,
+        size: file.size,
+        data: data,
+        filePath,
+        editMeta,
+        objectUrl: (type === FILE_TYPES.IMAGE || type === FILE_TYPES.MEDIA) ? data : null
+      });
+
+      if (!window.desktop) addRecentFile({
+        name: file.name,
+        type: type,
+        size: file.size
+      });
+      this.renderRecentFiles();
+    } catch (err) {
+      alert(`Could not read "${file.name}": ` + err.message);
+    }
   }
 
   

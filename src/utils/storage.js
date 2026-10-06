@@ -21,9 +21,34 @@ export function setStoredSidebarState(isOpen) {
   localStorage.setItem(STORAGE_KEYS.SIDEBAR_OPEN, String(isOpen));
 }
 
+export function getRecentFiles() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.RECENT_FILES);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
 
-
-
+export function addRecentFile(meta) {
+  try {
+    let list = getRecentFiles();
+    // Remove if already exists with same name
+    list = list.filter(item => item.name !== meta.name);
+    // Add to start
+    list.unshift({
+      name: meta.name,
+      type: meta.type,
+      size: meta.size,
+      lastOpened: Date.now()
+    });
+    // Keep the last 25 entries in the browser fallback.
+    
+    
+  } catch (e) {
+    
+  }
+}
 
 
 
