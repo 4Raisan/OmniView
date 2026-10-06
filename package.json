@@ -26,5 +26,17 @@
     "preview": "vite preview",
     "start": "electron .",
     "desktop": "npm run build && electron ."
-  }
+  },
+  "keywords": [
+    "viewer",
+    "excel",
+    "word",
+    "pdf",
+    "markdown",
+    "docx",
+    "xlsx",
+    "csv",
+    "fast",
+    "lightweight"
+  ]
 }
