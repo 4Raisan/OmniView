@@ -160,10 +160,39 @@ else {
       const item = recentFiles.find(item => item.id === id);
       if (item) await openPaths([item.path]);
     });
-    ipcMain.handle('clear-recents', async () => { recentFiles = [];  });
-    
-    
-    
+    ipcMain.handle('clear-recents', async () => { recentFiles = []; await saveHistory(); });
+    ipcMain.handle('open-dropped', async (_event, paths) => {
+      if (!Array.isArray(paths) || paths.length > 100 || paths.some(value => typeof value !== 'string' || !path.isAbsolute(value))) throw new Error('Invalid dropped files');
+      await openPaths(paths);
+    });
+    ipcMain.handle('fullscreen', () => mainWindow.setFullScreen(!mainWindow.isFullScreen()));
+    ipcMain.handle('save-text', async (_event, { token, name, bytes, saveAs }) => {
+      if (!(bytes instanceof Uint8Array) || bytes.byteLength > 2 * 1024 * 1024) throw new Error('Editing is limited to 2 MB.');
+      const original = editFiles.get(token);
+      let target = original?.path;
+      if (!target || saveAs) {
+        const result = await dialog.showSaveDialog(mainWindow, { defaultPath: target || path.basename(name) });
+        if (result.canceled) return null;
+        target = result.filePath;
+      } else {
+        const current = await fs.readFile(target);
+        if (digest(current) !== original.hash) throw new Error('This file changed outside OmniView. Use Save As to keep both versions.');
+      }
+      if (original && target.toLowerCase() === original.path.toLowerCase()) {
+        if (digest(await fs.readFile(target)) !== original.hash) throw new Error('This file changed outside OmniView. Choose a different Save As name.');
+      }
+      const temporary = path.join(path.dirname(target), `.${path.basename(target)}.${randomUUID()}.tmp`);
+      try {
+        await fs.writeFile(temporary, bytes, { flag: 'wx' });
+        
+      } finally {  }
+      
+      
+      
+      
+      
+      
+    });
     
     
     

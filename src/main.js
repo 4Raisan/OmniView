@@ -129,13 +129,29 @@ class OmniViewApp {
     handle.setAttribute('aria-label', 'Resize left panel');
     handle.setAttribute('aria-orientation', 'vertical');
     handle.tabIndex = 0;
-    
-    
-    
-    
-    
-    
-    
+    this.sidebar.after(handle);
+    const setWidth = width => {
+      const maximum = Math.min(520, Math.max(180, document.querySelector('.app-body').clientWidth - 480));
+      this.sidebarWidth = Math.max(180, Math.min(maximum, width));
+      document.documentElement.style.setProperty('--sidebar-width', `${this.sidebarWidth}px`);
+      handle.setAttribute('aria-valuenow', Math.round(this.sidebarWidth));
+      handle.setAttribute('aria-valuemin', '180');
+      handle.setAttribute('aria-valuemax', maximum);
+      setStoredSidebarWidth(this.sidebarWidth);
+    };
+    setWidth(this.sidebarWidth);
+    let dragging = false;
+    handle.onpointerdown = event => {
+      if (event.button !== 0 || !this.sidebarOpen) return;
+      dragging = true;
+      handle.setPointerCapture(event.pointerId);
+      document.body.classList.add('resizing-sidebar');
+      event.preventDefault();
+    };
+    handle.onpointermove = event => {
+      if (dragging) setWidth(event.clientX - this.sidebar.getBoundingClientRect().left);
+    };
+    const stop = () => { dragging = false; document.body.classList.remove('resizing-sidebar'); };
     
     
     

@@ -17,9 +17,9 @@ contextBridge.exposeInMainWorld('desktop', {
   releaseEditFile: token => ipcRenderer.send('release-edit-file', token),
   releaseMedia: token => ipcRenderer.send('release-media', token),
   onMedia: callback => ipcRenderer.on('open-media', (_event, file) => callback(file)),
+  allowClose: () => ipcRenderer.send('allow-close'),
   onRequestClose: callback => ipcRenderer.on('request-close', () => callback()),
   allowReload: () => ipcRenderer.send('allow-reload'),
-  cancelReload: () => ipcRenderer.send('cancel-reload'),
   onRequestReload: callback => ipcRenderer.on('request-reload', () => callback()),
   onFile: callback => {
     ipcRenderer.on('open-file', (_event, file) => callback(file));
