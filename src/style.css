@@ -590,3 +590,24 @@ body {
   animation: spin 0.7s linear infinite;
 }
 
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.viewer-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 12px;
+  color: var(--text-primary);
+  text-align: center;
+  padding: 24px;
+}
+
+.error-icon {
+  font-size: calc(32px * var(--font-scale, 1));
+  color: var(--danger-color);
+}
+
