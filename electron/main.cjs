@@ -92,22 +92,25 @@ else {
           const match = /^bytes=(\d*)-(\d*)$/.exec(range);
           if (!match || (!match[1] && !match[2])) return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${size}` } });
           start = match[1] ? Number(match[1]) : Math.max(0, size - Number(match[2]));
-          
-          
+          end = match[1] && match[2] ? Math.min(Number(match[2]), size - 1) : size - 1;
+          if (start > end || start >= size) return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${size}` } });
         }
-        
-        
-        
-        
-        
-        
-        
-         
-        
-        
-        
-        
-      } catch {  }
+        const mime = { '.wav':'audio/wav', '.mp3':'audio/mpeg', '.mp4':'video/mp4', '.webm':'video/webm', '.ogv':'video/ogg', '.ogg':'audio/ogg', '.m4a':'audio/mp4', '.flac':'audio/flac' }[path.extname(target).toLowerCase()];
+        const headers = { 'Content-Type': mime, 'Accept-Ranges': 'bytes', 'Content-Length': String(end - start + 1) };
+        if (range) headers['Content-Range'] = `bytes ${start}-${end}/${size}`;
+        if (request.method === 'HEAD') return new Response(null, { status: range ? 206 : 200, headers });
+        if (size === 0) return new Response(null, { headers: { ...headers, 'Content-Length':'0' } });
+        const stream = createReadStream(target, { start, end });
+        const streams = mediaStreams.get(token) || new Set();
+        streams.add(stream); mediaStreams.set(token, streams);
+        const abort = () => stream.destroy();
+        request.signal.addEventListener('abort', abort, { once:true });
+        stream.on('close', () => {
+          request.signal.removeEventListener('abort', abort); streams.delete(stream);
+          if (!streams.size && mediaStreams.get(token) === streams) mediaStreams.delete(token);
+        });
+        return new Response(Readable.toWeb(stream), { status: range ? 206 : 200, headers });
+      } catch { return new Response('Media unavailable', { status:404 }); }
     });
     
     
