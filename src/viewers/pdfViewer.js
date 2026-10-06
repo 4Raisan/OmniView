@@ -77,31 +77,78 @@ export class PdfViewer {
         canvas.height = viewport.height;
         await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
         const image = document.createElement('img');
-        
-        
-        
-        
-        
-        
-        
+        const blob = await new Promise(resolve => canvas.toBlob(resolve));
+        if (!blob) throw new Error('Could not prepare the page for printing.');
+        image.src = URL.createObjectURL(blob);
+        printUrls.push(image.src);
+        await image.decode();
+        printArea.append(image);
+        canvas.width = canvas.height = 0;
       }
-      
-      
+      document.body.classList.add('printing-pdf');
+      if (window.desktop) await window.desktop.print();
+      else window.print();
     } finally {
-      
-      
-      
-      
+      document.body.classList.remove('printing-pdf');
+      printArea.remove();
+      printUrls.forEach(url => URL.revokeObjectURL(url));
+      this.printing = false;
     }
   }
 
-  
+  destroy() {
+    this.destroyed = true;
+    this.renderGeneration++;
+    this.renderTask?.cancel();
+    this.resizeObserver?.disconnect();
+    cancelAnimationFrame(this.scrollFrame);
+    this.loadingTask?.destroy().catch(() => {});
+    for (const item of this.pages) item.canvas.width = item.canvas.height = 0;
+    this.renderQueue.clear();
+  }
 
-  
+  suspend() {
+    this.suspended = true;
+    this.renderGeneration++;
+    this.renderTask?.cancel();
+    this.renderQueue.clear();
+    for (const item of this.pages) {
+      item.canvas.width = item.canvas.height = 0;
+      item.rendered = false;
+      item.section.classList.remove('rendered');
+      item.page.cleanup();
+    }
+  }
 
-  
+  resume() {
+    this.suspended = false;
+    this.queueVisiblePages();
+  }
 
-  
+  async setupContainer() {
+    this.container.innerHTML = '<div class="pdf-viewer-wrapper" tabindex="0" aria-label="PDF pages"></div>';
+    this.scrollArea = this.container.firstElementChild;
+    const fragment = document.createDocumentFragment();
+    for (let number = 1; number <= this.pdfDoc.numPages; number++) {
+      const page = await this.pdfDoc.getPage(number);
+      if (this.destroyed) return;
+      const section = document.createElement('section');
+      section.className = 'pdf-page';
+      section.dataset.page = number;
+      section.setAttribute('aria-label', `Page ${number}`);
+      const canvas = document.createElement('canvas');
+      canvas.className = 'pdf-page-canvas';
+      if (number === 1) canvas.id = 'pdf-canvas';
+      section.append(canvas);
+      this.pages.push({ page, section, canvas, rendered: false });
+      fragment.append(section);
+    }
+    this.scrollArea.append(fragment);
+    this.layoutPages();
+    
+    
+    
+  }
 
   
 
