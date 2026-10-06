@@ -295,3 +295,120 @@ body {
   position: relative;
 }
 
+/* Sidebar */
+.app-sidebar {
+  width: var(--sidebar-width);
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  transition: width 0.2s ease, transform 0.2s ease;
+  user-select: none;
+  z-index: 50;
+}
+
+.app-sidebar.collapsed {
+  width: 0;
+  overflow: hidden;
+  border-right: none;
+}
+
+.sidebar-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 6px;
+  font-size: calc(11px * var(--font-scale, 1));
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+}
+
+.recent-files-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.recent-file-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: calc(13px * var(--font-scale, 1));
+  transition: all 0.15s ease;
+}
+
+.recent-file-item:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.recent-file-item.active {
+  background: var(--accent-light);
+  color: var(--accent-color);
+}
+
+.recent-item-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+}
+
+.recent-item-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+
+.recent-item-meta {
+  font-size: calc(11px * var(--font-scale, 1));
+  color: var(--text-muted);
+}
+
+.sidebar-file-details {
+  border-top: 1px solid var(--border-color);
+  padding: 12px 14px;
+  font-size: calc(12px * var(--font-scale, 1));
+  background: var(--bg-primary);
+}
+
+.sidebar-file-details h4 {
+  font-size: calc(11px * var(--font-scale, 1));
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+}
+
+.file-meta-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  color: var(--text-secondary);
+}
+
+.file-meta-row span:last-child {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* Content Area */
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-canvas);
+  overflow: hidden;
+  position: relative;
+}
+

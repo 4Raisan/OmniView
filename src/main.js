@@ -273,15 +273,45 @@ class OmniViewApp {
       this.dropOverlay?.classList.remove('active');
       const files = Array.from(e.dataTransfer.files || []);
       if (files.length) {
-        
+        if (!window.desktop || !await window.desktop.openDropped(files)) files.forEach(f => this.loadFile(f));
       }
     });
 
     // Global Keyboard Shortcuts
-    
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'F11') {
+        e.preventDefault();
+        if (window.desktop) window.desktop.fullscreen();
+        else if (document.fullscreenElement) document.exitFullscreen();
+        else document.documentElement.requestFullscreen();
+      }
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key.toLowerCase() === 'p') {
+          e.preventDefault();
+          this.printActiveDocument();
+        }
+        if (e.key === 'o' || e.key === 'O') {
+          e.preventDefault();
+          this.openFilePicker();
+        } else if (e.key === 'w' || e.key === 'W') {
+          e.preventDefault();
+          if (this.activeTabId) this.closeTab(this.activeTabId);
+        } else if (e.key === 'b' || e.key === 'B') {
+          e.preventDefault();
+          this.sidebarOpen = !this.sidebarOpen;
+          this.applySidebarState();
+        }
+      }
+    });
   }
 
-  
+  async loadFile(file, filePath = null, editToken = null) {
+    const type = detectFileType(file.name, file.type);
+    let data;
+    let editMeta = null;
+
+    
+  }
 
   
 
