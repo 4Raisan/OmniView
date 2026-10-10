@@ -167,23 +167,80 @@ export class CodeViewer {
     }).join('');
 
     pre.innerHTML = linesHtml;
-    
-    
-    
-    
-    
+    wrapper.appendChild(pre);
+    this.container.appendChild(wrapper);
+    this.lineElements = [...pre.querySelectorAll('.code-line')];
+    this.lowercaseLines = lines.map(line => line.toLowerCase());
+    this.renderSearch();
   }
 
-  
+  renderSearch() {
+    const q = this.searchQuery.toLowerCase();
+    const regex = q ? new RegExp(this.escapeRegExp(this.searchQuery), 'gi') : null;
+    this.lineElements?.forEach((element, index) => {
+      const matches = !!q && this.lowercaseLines[index].includes(q);
+      const line = element.querySelector('.line-code');
+      if (element.classList.contains('has-match')) line.innerHTML = this.highlightedLines[index] || '&nbsp;';
+      element.classList.toggle('has-match', matches);
+      if (matches) {
+        const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
+        const nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+        for (const node of nodes) {
+          regex.lastIndex = 0;
+          const text = node.textContent;
+          const fragment = document.createDocumentFragment();
+          let offset = 0, match;
+          while ((match = regex.exec(text))) {
+            fragment.append(text.slice(offset, match.index));
+            const mark = document.createElement('mark');
+            mark.className = 'search-match'; mark.textContent = match[0];
+            fragment.append(mark); offset = match.index + match[0].length;
+          }
+          if (offset) { fragment.append(text.slice(offset)); node.replaceWith(fragment); }
+        }
+      }
+    });
+  }
 
-  
+  escapeHtml(str) {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
 
-  
+  destroy() {
+    this.editor?.destroy();
+    this.container.replaceChildren();
+    this.highlightedLines = null;
+    this.rawText = '';
+    this.lineElements = null;
+    this.lowercaseLines = null;
+  }
 
-  
-  
+  suspend() {
+    if (this.editor?.editing) return;
+    this.scrollPosition = this.container.firstElementChild?.scrollTop || 0;
+    this.container.replaceChildren();
+    this.lineElements = null; this.lowercaseLines = null;
+  }
+  resume() {
+    if (!this.container.childElementCount) {
+      this.renderContent();
+      this.container.firstElementChild.scrollTop = this.scrollPosition || 0;
+    }
+  }
 
-  
+  escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
 
-  
+  showToast(msg) {
+    const toast = document.createElement('div');
+    toast.className = 'toast-notification';
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2500);
+  }
 }
