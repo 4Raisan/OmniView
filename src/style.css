@@ -871,3 +871,42 @@ body {
   background: transparent !important;
 }
 
+/* ================= PDF VIEWER STYLES ================= */
+.pdf-viewer-wrapper {
+  padding: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100%;
+}
+
+.pdf-canvas-container {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  background: #fff;
+  border-radius: 4px;
+  overflow: hidden;
+  display: inline-block;
+}
+
+#pdf-canvas {
+  display: block;
+}
+
+.pdf-page-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: calc(12px * var(--font-scale, 1));
+}
+
+.pdf-page-indicator input {
+  width: 44px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 3px 6px;
+  border-radius: 4px;
+  text-align: center;
+  font-size: calc(12px * var(--font-scale, 1));
+}
+

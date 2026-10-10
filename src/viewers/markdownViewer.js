@@ -75,37 +75,52 @@ export class MarkdownViewer {
     toolbar.appendChild(modeSwitch);
 
     // Reading stats
-    
-    
-    
-    
-    
-    
+    const words = this.rawText.trim().split(/\s+/).filter(Boolean).length;
+    const readTimeMin = Math.max(1, Math.round(words / 200));
+    const statsBadge = document.createElement('div');
+    statsBadge.className = 'toolbar-badge';
+    statsBadge.textContent = `${words} words • ~${readTimeMin} min read`;
+    toolbar.appendChild(statsBadge);
 
-    
-      
-    
-    
-    
-     
-    
-     
-      
+    const find = document.createElement('input');
+    find.className = 'md-find'; find.placeholder = 'Find in Markdown…'; find.setAttribute('aria-label', 'Find in Markdown');
+    find.value = this.query || '';
+    find.oninput = () => {
+      this.query = find.value;
+      clearTimeout(this.findTimer);
+      this.findTimer = setTimeout(() => this.applySearch(), 150);
+    };
+    find.onkeydown = event => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      const marks = [...this.container.querySelectorAll('.md-match')];
+      if (marks.length) { this.matchIndex = ((this.matchIndex ?? -1) + (event.shiftKey ? marks.length - 1 : 1)) % marks.length; marks[this.matchIndex].scrollIntoView({ block: 'center' }); }
+    };
+    const findWrapper = document.createElement('div'); findWrapper.className = 'toolbar-search';
+    findWrapper.innerHTML = `<span class="search-icon">${icons.search}</span>`;
+    findWrapper.append(find); toolbar.append(findWrapper);
+    const count = document.createElement('span'); count.className = 'markdown-find-count'; toolbar.append(count);
 
     // Action buttons
-    
-    
+    const actions = document.createElement('div');
+    actions.className = 'toolbar-actions';
 
-    
-    
-    
-    
-    
-    
-    
+    const copyRawBtn = document.createElement('button');
+    copyRawBtn.className = 'btn-icon document-copy';
+    copyRawBtn.title = 'Copy selected text, or raw Markdown';
+    copyRawBtn.innerHTML = icons.copy;
+    copyRawBtn.onmousedown = event => event.preventDefault();
+    copyRawBtn.onclick = async () => {
+      const selected = selectedDocumentText(this.container);
+      try {
+        await navigator.clipboard.writeText(selected ?? this.editor?.text ?? this.rawText);
+        this.showToast(selected !== null ? 'Selected text copied!' : 'Markdown copied!');
+      } catch { this.showToast('Could not copy text. Try Ctrl+C.'); }
+    };
+    actions.appendChild(copyRawBtn);
 
-    
-    
+    const printBtn = document.createElement('button');
+    printBtn.className = 'btn-icon';
     
     
     
