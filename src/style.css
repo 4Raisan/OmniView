@@ -1086,3 +1086,87 @@ body {
   border-radius: 2px;
 }
 
+/* ================= IMAGE VIEWER STYLES ================= */
+.image-viewer-container {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: repeating-conic-gradient(#1e293b 0% 25%, #0f172a 0% 50%) 50% / 20px 20px;
+}
+
+[data-theme="light"] .image-viewer-container {
+  background: repeating-conic-gradient(#f1f5f9 0% 25%, #e2e8f0 0% 50%) 50% / 20px 20px;
+}
+
+.image-stage {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  user-select: none;
+}
+
+.viewer-img {
+  max-width: none;
+  max-height: none;
+  transition: transform 0.05s ease-out;
+  box-shadow: var(--shadow-lg);
+  border-radius: 4px;
+}
+
+/* ================= ZIP VIEWER STYLES ================= */
+.zip-viewer-container {
+  padding: 20px;
+  overflow: auto;
+  height: 100%;
+}
+
+.zip-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: calc(13px * var(--font-scale, 1));
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.zip-table th {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  padding: 10px 14px;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.zip-table td {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.zip-table tr:hover td {
+  background: var(--bg-tertiary);
+}
+
+.zip-name-col {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.zip-entry-path.is-dir {
+  font-weight: 600;
+  color: var(--warning-color);
+}
+
+.zip-actions-col {
+  text-align: right;
+  white-space: nowrap;
+}
+
