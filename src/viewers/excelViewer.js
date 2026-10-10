@@ -227,29 +227,80 @@ export class ExcelViewer {
       tr.appendChild(rowHeader);
 
       for (let c = 0; c < maxCols; c++) {
-        
-        
-        
-        
-        
+        const td = document.createElement('td');
+        const val = row && row[c] !== undefined ? row[c] : '';
+        td.textContent = val;
+        if (typeof val === 'number') td.classList.add('num-cell');
+        tr.appendChild(td);
       }
-      
+      tbody.appendChild(tr);
     });
-    
-    
-    
+    table.appendChild(tbody);
+    tableWrap.appendChild(table);
+    wrapper.appendChild(tableWrap);
 
     // Pagination footer if more than 1 page
-    
+    if (totalPages > 1) {
+      const footer = document.createElement('div');
+      footer.className = 'excel-pagination';
+      footer.innerHTML = `
+        <button class="btn-icon" ${this.currentPage <= 1 ? 'disabled' : ''} id="prev-page">${icons.chevronLeft}</button>
+        <span>Page <strong>${this.currentPage}</strong> of <strong>${totalPages}</strong> (${this.filteredData.length} total rows)</span>
+        <button class="btn-icon" ${this.currentPage >= totalPages ? 'disabled' : ''} id="next-page">${icons.chevronRight}</button>
+      `;
 
-    
+      footer.querySelector('#prev-page').onclick = () => {
+        if (this.currentPage > 1) {
+          this.currentPage--;
+          this.renderGrid();
+        }
+      };
+
+      footer.querySelector('#next-page').onclick = () => {
+        if (this.currentPage < totalPages) {
+          this.currentPage++;
+          this.renderGrid();
+        }
+      };
+
+      wrapper.appendChild(footer);
+    }
+
+    this.container.appendChild(wrapper);
   }
 
-  
+  getColumnLetter(colIndex) {
+    let letter = '';
+    let temp = colIndex;
+    while (temp >= 0) {
+      letter = String.fromCharCode((temp % 26) + 65) + letter;
+      temp = Math.floor(temp / 26) - 1;
+    }
+    return letter;
+  }
 
-  
+  copyTable() {
+    if (!this.filteredData.length) return;
+    const tsv = this.filteredData.map(row => row.join('\t')).join('\n');
+    navigator.clipboard.writeText(tsv).then(() => {
+      this.showToast('Table copied to clipboard!');
+    });
+  }
 
-  
+  exportCSV() {
+    const sheet = this.workbook.Sheets[this.currentSheetName];
+    if (!sheet) return;
+    const csv = XLSX.utils.sheet_to_csv(sheet);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const cleanName = (this.filename.replace(/\.[^/.]+$/, '') || 'sheet') + `_${this.currentSheetName}.csv`;
+    downloadBlob(blob, cleanName);
+  }
 
-  
+  showToast(msg) {
+    const toast = document.createElement('div');
+    toast.className = 'toast-notification';
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2500);
+  }
 }

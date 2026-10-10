@@ -151,12 +151,36 @@ export function readFileAsArrayBuffer(file) {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
     reader.onerror = reject;
-    
+    reader.readAsArrayBuffer(file);
   });
 }
 
+export function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsText(file);
+  });
+}
 
+export function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
-
-
-
+export async function downloadBlob(blob, filename) {
+  
+  
+  
+  
+  
+  
+  
+  
+  
+}
