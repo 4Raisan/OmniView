@@ -1170,3 +1170,80 @@ body {
   white-space: nowrap;
 }
 
+/* ================= MEDIA VIEWER STYLES ================= */
+.media-viewer-container {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.media-player-box {
+  max-width: 900px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.media-player-box video {
+  max-width: 100%;
+  max-height: 80vh;
+  border-radius: 8px;
+  box-shadow: var(--shadow-lg);
+  outline: none;
+}
+
+.audio-visualizer-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  max-width: 480px;
+  width: 100%;
+  box-shadow: var(--shadow-lg);
+}
+
+.audio-icon-pulse {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(236, 72, 153, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ec4899;
+}
+
+.audio-title {
+  font-size: calc(15px * var(--font-scale, 1));
+  font-weight: 600;
+  text-align: center;
+  word-break: break-all;
+}
+
+.audio-visualizer-card audio {
+  width: 100%;
+}
+
+/* Toast Notifications */
+.toast-notification {
+  position: fixed;
+  bottom: 40px;
+  right: 24px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-lg);
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: calc(13px * var(--font-scale, 1));
+  font-weight: 500;
+  z-index: 2000;
+  animation: fadeIn 0.2s ease;
+}
+

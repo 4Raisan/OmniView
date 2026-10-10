@@ -82,35 +82,73 @@ export class WordViewer {
     modeSwitch.querySelector('#mode-paged').onclick = () => {
       this.viewMode = 'paged';
       const wrapper = this.container.querySelector('.word-viewer-wrapper');
-      
-      
+      if (wrapper) {
+        wrapper.classList.remove('fluid');
+        wrapper.classList.add('paged');
+      }
+      this.renderToolbar();
     };
 
-    
-    
+    modeSwitch.querySelector('#mode-fluid').onclick = () => {
+      this.viewMode = 'fluid';
+      const wrapper = this.container.querySelector('.word-viewer-wrapper');
+      if (wrapper) {
+        wrapper.classList.remove('paged');
+        wrapper.classList.add('fluid');
+      }
+      this.renderToolbar();
+    };
+    toolbar.appendChild(modeSwitch);
 
     // Zoom controls
-    
-    
-    
+    const zoomGroup = document.createElement('div');
+    zoomGroup.className = 'toolbar-zoom-group';
+    zoomGroup.innerHTML = `
+      <button class="btn-icon" id="zoom-out" title="Zoom out">${icons.zoomOut}</button>
+      <span class="zoom-display">${this.zoom}%</span>
+      <button class="btn-icon" id="zoom-in" title="Zoom in">${icons.zoomIn}</button>
+      <button class="btn-text" id="zoom-reset" title="Reset Zoom">100%</button>
+    `;
 
-    
+    zoomGroup.querySelector('#zoom-out').onclick = () => {
+      if (this.zoom > 40) {
+        this.zoom -= 15;
+        this.updateZoom();
+      }
+    };
 
-    
+    zoomGroup.querySelector('#zoom-in').onclick = () => {
+      if (this.zoom < 250) {
+        this.zoom += 15;
+        this.updateZoom();
+      }
+    };
 
-    
-    
+    zoomGroup.querySelector('#zoom-reset').onclick = () => {
+      this.zoom = 100;
+      this.updateZoom();
+    };
+    toolbar.appendChild(zoomGroup);
 
     // Print button
-    
-    
-    
-    
-    
-    
+    const printBtn = document.createElement('button');
+    printBtn.className = 'btn-icon';
+    printBtn.title = 'Print or save to PDF';
+    printBtn.innerHTML = icons.printer;
+    printBtn.onclick = () => window.print();
+    toolbar.appendChild(printBtn);
 
-    
+    this.toolbarContainer.appendChild(toolbar);
   }
 
-  
+  updateZoom() {
+    const scaleEl = this.container.querySelector('.word-canvas-scale');
+    if (scaleEl) {
+      scaleEl.style.transform = `scale(${this.zoom / 100})`;
+    }
+    const display = this.toolbarContainer.querySelector('.zoom-display');
+    if (display) {
+      display.textContent = `${this.zoom}%`;
+    }
+  }
 }
