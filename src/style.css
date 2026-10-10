@@ -611,3 +611,220 @@ body {
   color: var(--danger-color);
 }
 
+/* Toolbar Shared Styles */
+.excel-toolbar, .word-toolbar, .pdf-toolbar, .markdown-toolbar, .code-toolbar, .image-toolbar, .zip-toolbar, .media-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  overflow-x: auto;
+}
+
+.toolbar-badge {
+  font-size: calc(12px * var(--font-scale, 1));
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.toolbar-search {
+  display: flex;
+  align-items: center;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 2px 8px;
+  gap: 6px;
+  min-width: 180px;
+}
+
+.toolbar-search input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: calc(12px * var(--font-scale, 1));
+  width: 100%;
+}
+
+.search-icon {
+  color: var(--text-muted);
+  display: flex;
+}
+
+.search-clear-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.toolbar-button-group {
+  display: flex;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.btn-group-item {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  padding: 4px 10px;
+  font-size: calc(12px * var(--font-scale, 1));
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-group-item.active {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.toolbar-zoom-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.zoom-display {
+  font-size: calc(12px * var(--font-scale, 1));
+  font-weight: 600;
+  color: var(--text-secondary);
+  min-width: 44px;
+  text-align: center;
+}
+
+/* ================= EXCEL VIEWER STYLES ================= */
+.excel-viewer-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.excel-sheet-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+}
+
+.excel-sheet-tab {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: calc(12px * var(--font-scale, 1));
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.excel-sheet-tab.active {
+  background: var(--accent-light);
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+  font-weight: 600;
+}
+
+.excel-table-scroll {
+  flex: 1;
+  overflow: auto;
+  background: var(--bg-primary);
+}
+
+.excel-grid {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: calc(12px * var(--font-scale, 1));
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+}
+
+.excel-origin-cell {
+  background: var(--bg-tertiary);
+  width: 45px;
+  min-width: 45px;
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 20;
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.excel-col-header {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-weight: 600;
+  padding: 6px 12px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  text-align: center;
+}
+
+.excel-row-header {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-weight: 600;
+  padding: 4px 8px;
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  text-align: center;
+}
+
+.excel-grid td {
+  padding: 5px 10px;
+  border-right: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+  max-width: 400px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.excel-grid tr:hover td {
+  background-color: var(--accent-light);
+}
+
+.excel-grid td.num-cell {
+  text-align: right;
+  font-family: var(--font-mono);
+}
+
+.excel-pagination {
+  height: 38px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
+}
+
+.empty-sheet-msg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+}
+
