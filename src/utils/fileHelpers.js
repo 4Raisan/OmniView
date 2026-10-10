@@ -133,14 +133,27 @@ export function getFileTypeIcon(type) {
     case FILE_TYPES.IMAGE: return icons.fileImage;
     case FILE_TYPES.MEDIA: return icons.fileMedia;
     case FILE_TYPES.ZIP: return icons.fileArchive;
-    case FILE_TYPES.CODE: 
-    default: 
+    case FILE_TYPES.CODE: return icons.fileCode;
+    default: return icons.file;
   }
 }
 
+export function formatFileSize(bytes = 0) {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
 
-
-
+export function readFileAsArrayBuffer(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    
+  });
+}
 
 
 

@@ -216,17 +216,142 @@ export class PdfViewer {
         if (item.rendered && (rect.bottom < bounds.top - 2000 || rect.top > bounds.bottom + 2000)) {
           item.canvas.width = item.canvas.height = 0;
           item.rendered = false;
-          
-          
+          item.section.classList.remove('rendered');
+          item.page.cleanup();
         }
       }
     }
-    
+    this.flushRenderQueue();
   }
 
-  
+  async flushRenderQueue() {
+    if (this.rendering || this.destroyed || this.suspended) return;
+    this.rendering = true;
+    try {
+      while (this.renderQueue.size && !this.destroyed && !this.suspended) {
+        const index = this.renderQueue.values().next().value;
+        this.renderQueue.delete(index);
+        const item = this.pages[index];
+        if (item.rendered) continue;
+        const generation = this.renderGeneration;
+        const viewport = item.page.getViewport({ scale: this.scale, rotation: this.rotation });
+        // Bound one screen canvas to 32 MB even on high-DPI displays at high zoom.
+        const dpr = Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(8_000_000 / (viewport.width * viewport.height)));
+        item.canvas.width = Math.floor(viewport.width * dpr);
+        item.canvas.height = Math.floor(viewport.height * dpr);
+        try {
+          this.renderTask = item.page.render({
+            canvasContext: item.canvas.getContext('2d', { alpha: false }), viewport,
+            transform: dpr === 1 ? null : [dpr, 0, 0, dpr, 0, 0]
+          });
+          await this.renderTask.promise;
+          if (generation === this.renderGeneration) {
+            item.rendered = true;
+            item.section.classList.add('rendered');
+          }
+        } catch (error) {
+          if (error.name !== 'RenderingCancelledException' && !this.destroyed) {
+            console.error('PDF page rendering failed', error);
+          }
+        } finally {
+          this.renderTask = null;
+          if (this.suspended || this.destroyed) {
+            item.canvas.width = item.canvas.height = 0;
+            item.page.cleanup();
+          }
+        }
+      }
+    } finally { this.rendering = false; }
+  }
 
-  
+  renderToolbar() {
+    this.toolbarContainer.innerHTML = '';
+    const toolbar = document.createElement('div');
+    toolbar.className = 'pdf-toolbar';
+
+    // Page navigation
+    const navGroup = document.createElement('div');
+    navGroup.className = 'toolbar-nav-group';
+    navGroup.innerHTML = `
+      <button class="btn-icon" id="pdf-prev" title="Previous page" aria-label="Previous page">${icons.chevronLeft}</button>
+      <div class="pdf-page-indicator">
+        <input type="number" aria-label="Page number" id="pdf-page-input" value="${this.currentPageNum}" min="1" max="${this.pdfDoc.numPages}" />
+        <span>/ ${this.pdfDoc.numPages}</span>
+      </div>
+      <button class="btn-icon" id="pdf-next" title="Next page" aria-label="Next page">${icons.chevronRight}</button>
+    `;
+
+    navGroup.querySelector('#pdf-prev').onclick = () => {
+      if (this.currentPageNum > 1) {
+        this.renderPage(this.currentPageNum - 1);
+      }
+    };
+
+    navGroup.querySelector('#pdf-next').onclick = () => {
+      if (this.currentPageNum < this.pdfDoc.numPages) {
+        this.renderPage(this.currentPageNum + 1);
+      }
+    };
+
+    const input = navGroup.querySelector('#pdf-page-input');
+    input.onchange = (e) => {
+      const val = parseInt(e.target.value, 10);
+      if (val >= 1 && val <= this.pdfDoc.numPages) {
+        this.renderPage(val);
+      } else {
+        input.value = this.currentPageNum;
+      }
+    };
+    toolbar.appendChild(navGroup);
+
+    // Zoom controls
+    const zoomGroup = document.createElement('div');
+    zoomGroup.className = 'toolbar-zoom-group';
+    zoomGroup.innerHTML = `
+      <button class="btn-icon" id="pdf-zoom-out" title="Zoom out">${icons.zoomOut}</button>
+      <span class="zoom-display">${Math.round(this.scale * 100)}%</span>
+      <button class="btn-icon" id="pdf-zoom-in" title="Zoom in">${icons.zoomIn}</button>
+      <button class="btn-text" id="pdf-fit-width">Fit Width</button>
+    `;
+
+    zoomGroup.querySelector('#pdf-zoom-out').onclick = () => {
+      
+    };
+
+    
+
+    
+    
+
+    // Rotate button
+    
+    
+    
+    
+    
+    
+
+    // Print & Download
+    
+    
+
+    
+    
+    
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+
+    
+    
+  }
 
   
 
