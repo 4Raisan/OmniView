@@ -315,45 +315,82 @@ export class PdfViewer {
     `;
 
     zoomGroup.querySelector('#pdf-zoom-out').onclick = () => {
-      
+      if (this.scale > 0.4) {
+        this.scale = Math.max(0.4, this.scale - 0.2);
+        this.renderPage(this.currentPageNum);
+        this.updateZoomDisplay();
+      }
     };
 
-    
+    zoomGroup.querySelector('#pdf-zoom-in').onclick = () => {
+      if (this.scale < 3.0) {
+        this.scale = Math.min(3.0, this.scale + 0.2);
+        this.renderPage(this.currentPageNum);
+        this.updateZoomDisplay();
+      }
+    };
 
-    
-    
+    zoomGroup.querySelector('#pdf-fit-width').onclick = async () => {
+      const page = await this.pdfDoc.getPage(this.currentPageNum);
+      const viewport = page.getViewport({ scale: 1.0, rotation: this.rotation });
+      const containerWidth = this.scrollArea.clientWidth - 48;
+      if (containerWidth > 0 && viewport.width > 0) {
+        this.scale = Math.min(2.5, Math.max(0.5, containerWidth / viewport.width));
+        this.renderPage(this.currentPageNum);
+        this.updateZoomDisplay();
+      }
+    };
+    toolbar.appendChild(zoomGroup);
 
     // Rotate button
-    
-    
-    
-    
-    
-    
+    const rotateBtn = document.createElement('button');
+    rotateBtn.className = 'btn-icon';
+    rotateBtn.title = 'Rotate Clockwise';
+    rotateBtn.innerHTML = icons.rotate;
+    rotateBtn.onclick = () => {
+      this.rotation = (this.rotation + 90) % 360;
+      this.renderPage(this.currentPageNum);
+    };
+    toolbar.appendChild(rotateBtn);
 
     // Print & Download
-    
-    
+    const actionsGroup = document.createElement('div');
+    actionsGroup.className = 'toolbar-actions';
 
-    
-    
-    
-    
-    
-    
+    const printBtn = document.createElement('button');
+    printBtn.className = 'btn-icon';
+    printBtn.title = 'Print PDF';
+    printBtn.innerHTML = icons.printer;
+    printBtn.onclick = () => this.print().catch(error => alert(error.message));
+    actionsGroup.appendChild(printBtn);
 
-    
-    
-    
-    
-    
-    
+    const downloadBtn = document.createElement('button');
+    downloadBtn.className = 'btn-icon';
+    downloadBtn.title = 'Download PDF';
+    downloadBtn.innerHTML = icons.download;
+    downloadBtn.onclick = () => {
+      const blob = new Blob([this.rawBuffer], { type: 'application/pdf' });
+      downloadBlob(blob, this.filename);
+    };
+    actionsGroup.appendChild(downloadBtn);
 
-    
-    
+    toolbar.appendChild(actionsGroup);
+    this.toolbarContainer.appendChild(toolbar);
   }
 
-  
+  updatePageIndicator() {
+    const input = this.toolbarContainer.querySelector('#pdf-page-input');
+    if (input && document.activeElement !== input) input.value = this.currentPageNum;
+    const prevBtn = this.toolbarContainer.querySelector('#pdf-prev');
+    const nextBtn = this.toolbarContainer.querySelector('#pdf-next');
+    if (prevBtn) prevBtn.disabled = this.currentPageNum <= 1;
+    if (nextBtn) nextBtn.disabled = this.currentPageNum >= this.pdfDoc.numPages;
+  }
 
-  
+  updateZoomDisplay() {
+    const display = this.toolbarContainer.querySelector('.zoom-display');
+    if (display) {
+      display.textContent = `${Math.round(this.scale * 100)}%`;
+    }
+  }
 }
