@@ -186,12 +186,45 @@ export class MarkdownViewer {
     this.applySearch();
   }
 
-  previewSource(text) {  }
-  
+  previewSource(text) { return text.slice(0, 64 * 1024).split('\n').slice(0, 2000).join('\n'); }
+  previewHtml(text) {
+    const source = this.previewSource(text);
+    const notice = source.length < text.length ? '<p class="preview-limit">Preview limited to the first 65,536 characters or 2,000 lines. Raw view and editing keep the full document.</p>' : '';
+    return notice + sanitizeDocument(marked.parse(source));
+  }
 
-  
+  applySearch() {
+    this.container.querySelectorAll('mark.md-match').forEach(mark => { const parent = mark.parentNode; mark.replaceWith(document.createTextNode(mark.textContent)); parent.normalize(); });
+    const query = (this.query || '').toLocaleLowerCase();
+    const counter = this.toolbarContainer.querySelector('.markdown-find-count');
+    if (!query) { if (counter) counter.textContent = ''; return; }
+    const root = this.container.querySelector('.markdown-body') || this.container;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes = []; let node;
+    while ((node = walker.nextNode())) if (!node.parentElement.closest('button,.line-num,textarea')) nodes.push(node);
+    let count = 0;
+    for (const node of nodes) {
+      const value = node.textContent; const lower = value.toLocaleLowerCase(); let start = 0, index;
+      const fragment = document.createDocumentFragment(); let found = false;
+      while ((index = lower.indexOf(query, start)) !== -1) {
+        fragment.append(document.createTextNode(value.slice(start, index)));
+        const mark = document.createElement('mark'); mark.className = 'md-match'; mark.textContent = value.slice(index, index + query.length); fragment.append(mark);
+        start = index + query.length; count++; found = true;
+        if (count >= 2000) break;
+      }
+      if (found) { fragment.append(document.createTextNode(value.slice(start))); node.replaceWith(fragment); }
+      if (count >= 2000) break;
+    }
+    if (counter) counter.textContent = `${count}${count >= 2000 ? '+' : ''} matches`;
+    this.matchIndex = -1;
+  }
 
-  
+  suspend() {
+    clearTimeout(this.findTimer);
+    if (this.editor?.editing) {   }
+    
+    
+  }
 
   
 
