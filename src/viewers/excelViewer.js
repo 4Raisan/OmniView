@@ -150,15 +150,100 @@ export class ExcelViewer {
     const exportBtn = document.createElement('button');
     exportBtn.className = 'btn-icon';
     exportBtn.title = 'Export sheet to CSV';
-    
-    
-    
+    exportBtn.innerHTML = icons.download;
+    exportBtn.onclick = () => this.exportCSV();
+    actions.appendChild(exportBtn);
 
-    
-    
+    toolbar.appendChild(actions);
+    this.toolbarContainer.appendChild(toolbar);
   }
 
-  
+  renderGrid() {
+    this.container.innerHTML = '';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'excel-viewer-container';
+
+    if (!this.filteredData || this.filteredData.length === 0) {
+      wrapper.innerHTML = `
+        <div class="empty-sheet-msg">
+          <p>${this.searchQuery ? 'No rows match your filter.' : 'This sheet is empty.'}</p>
+        </div>
+      `;
+      this.container.appendChild(wrapper);
+      return;
+    }
+
+    // Determine max columns
+    let maxCols = 0;
+    for (let i = 0; i < this.filteredData.length; i++) {
+      if (this.filteredData[i] && this.filteredData[i].length > maxCols) {
+        maxCols = this.filteredData[i].length;
+      }
+    }
+    maxCols = Math.max(maxCols, 1);
+
+    // Pagination slice
+    const totalPages = Math.ceil(this.filteredData.length / this.pageSize);
+    const startIdx = (this.currentPage - 1) * this.pageSize;
+    const endIdx = Math.min(startIdx + this.pageSize, this.filteredData.length);
+    const pageRows = this.filteredData.slice(startIdx, endIdx);
+
+    // Table
+    const tableWrap = document.createElement('div');
+    tableWrap.className = 'excel-table-scroll';
+
+    const table = document.createElement('table');
+    table.className = 'excel-grid';
+
+    // Header row with Column letters (A, B, C...)
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+
+    // Top-left origin cell
+    const originCell = document.createElement('th');
+    originCell.className = 'excel-origin-cell';
+    originCell.textContent = '';
+    headerRow.appendChild(originCell);
+
+    for (let c = 0; c < maxCols; c++) {
+      const th = document.createElement('th');
+      th.className = 'excel-col-header';
+      th.textContent = this.getColumnLetter(c);
+      headerRow.appendChild(th);
+    }
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    // Table body
+    const tbody = document.createElement('tbody');
+    pageRows.forEach((row, rowOffset) => {
+      const actualRowIndex = startIdx + rowOffset + 1;
+      const tr = document.createElement('tr');
+
+      // Row number header
+      const rowHeader = document.createElement('th');
+      rowHeader.className = 'excel-row-header';
+      rowHeader.textContent = actualRowIndex;
+      tr.appendChild(rowHeader);
+
+      for (let c = 0; c < maxCols; c++) {
+        
+        
+        
+        
+        
+      }
+      
+    });
+    
+    
+    
+
+    // Pagination footer if more than 1 page
+    
+
+    
+  }
 
   
 
