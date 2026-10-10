@@ -6,4 +6,10 @@ export function escapeHtml(value = '') {
   }[char]));
 }
 
-
+export function sanitizeDocument(html) {
+  return DOMPurify.sanitize(html, {
+    FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input', 'style', 'link', 'meta'],
+    FORBID_ATTR: ['style'],
+    ALLOW_DATA_ATTR: false
+  });
+}
