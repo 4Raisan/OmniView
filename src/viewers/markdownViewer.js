@@ -121,21 +121,72 @@ export class MarkdownViewer {
 
     const printBtn = document.createElement('button');
     printBtn.className = 'btn-icon';
-    
-    
-    
-    
+    printBtn.title = 'Print document';
+    printBtn.innerHTML = icons.printer;
+    printBtn.onclick = () => window.print();
+    actions.appendChild(printBtn);
 
-    
-    
-    
+    toolbar.appendChild(actions);
+    this.toolbarContainer.appendChild(toolbar);
+    this.editor?.renderButtons();
   }
 
-  
+  renderContent() {
+    this.container.innerHTML = '';
+    const htmlContent = this.previewHtml(this.rawText);
 
-  
+    if (this.viewMode === 'formatted') {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'markdown-rendered-view';
+      wrapper.innerHTML = `<div class="markdown-body">${htmlContent}</div>`;
+      this.setupCodeBlockCopyButtons(wrapper);
+      this.container.appendChild(wrapper);
+    } else if (this.viewMode === 'raw') {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'markdown-raw-view';
+      const lines = this.rawText.split('\n');
+      const linesHtml = lines.map((line, i) =>
+        `<div class="code-line"><span class="line-num">${i + 1}</span><span class="line-content">${this.escapeHtml(line)}</span></div>`
+      ).join('');
+      wrapper.innerHTML = `<pre class="code-pre">${linesHtml}</pre>`;
+      this.container.appendChild(wrapper);
+    } else if (this.viewMode === 'split') {
+      const splitWrap = document.createElement('div');
+      splitWrap.className = 'markdown-split-view';
 
-  
+      const left = document.createElement('div');
+      left.className = 'split-pane left';
+      const lines = this.rawText.split('\n');
+      const linesHtml = lines.map((line, i) =>
+        `<div class="code-line"><span class="line-num">${i + 1}</span><span class="line-content">${this.escapeHtml(line)}</span></div>`
+      ).join('');
+      left.innerHTML = `<pre class="code-pre">${linesHtml}</pre>`;
+
+      const right = document.createElement('div');
+      right.className = 'split-pane right markdown-body';
+      right.innerHTML = htmlContent;
+      this.setupCodeBlockCopyButtons(right);
+
+      // Sync scroll
+      left.onscroll = () => {
+        const pct = left.scrollTop / (left.scrollHeight - left.clientHeight || 1);
+        right.scrollTop = pct * (right.scrollHeight - right.clientHeight);
+      };
+
+      splitWrap.appendChild(left);
+      splitWrap.appendChild(right);
+      this.container.appendChild(splitWrap);
+    }
+    this.applySearch();
+  }
+
+  renderLivePreview(target, text) {
+    target.innerHTML = this.previewHtml(text);
+    target.querySelectorAll('a').forEach(a => { a.target = '_blank'; a.rel = 'noopener noreferrer'; });
+    this.applySearch();
+  }
+
+  previewSource(text) {  }
   
 
   
