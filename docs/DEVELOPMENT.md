@@ -97,3 +97,8 @@ If OmniView is useful to you, [star the repository](https://github.com/4Raisan/O
 
 OmniView is the renamed Multi-Viewer. The existing application ID, installation identity and preference keys remain for compatibility with upgrades and saved settings. The repository is now https://github.com/4Raisan/OmniView. Historical 1.5/1.6 measurements in the performance report retain their original product names.
 
+
+## Publishing downloads
+
+Create a draft release for the package version, then run the Build release downloads workflow from GitHub Actions. It builds the installer and portable executable, runs the 28 desktop checks against the packaged app, and uploads both files to the draft. Review the checksums and publish the draft when ready.
+

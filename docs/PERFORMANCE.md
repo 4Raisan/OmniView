@@ -87,10 +87,13 @@ Three fresh-profile runs of the final packaged build used the same standard work
 
 All **28 desktop integration checks passed on the final packaged build**, including the single title/menu row, native menu popup, safe editing, Markdown split preview, media streaming and tab cleanup.
 
-- Installer: **88,351,377 bytes (88.4 MB)**.
-- Portable executable: **88,177,919 bytes (88.2 MB)**.
+- Installer: **88,351,402 bytes (88.4 MB)**.
+- Portable executable: **88,177,949 bytes (88.2 MB)**.
 - Unpacked payload: **307,527,150 bytes (307.5 MB)**.
 - SHA-256 hashes for the current executables are recorded in benchmark-results.json.
 
 A local Microsoft Defender scan of the final 1.7.0 release folder reported no threats. The executables remain unsigned; SmartScreen may still show a publisher warning.
+
+
+The GitHub release downloads were rebuilt from commit e603f4d on a Windows runner and passed all 28 packaged desktop checks. The memory measurements above remain from the local 1.7.0 benchmark build; they were not rerun on the runner. Current download checksums are stored in releaseArtifacts, and the original benchmark-build checksums remain in benchmarkBuildArtifacts. The Defender scan above covers that original local build.
 

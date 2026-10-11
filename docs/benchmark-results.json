@@ -3066,13 +3066,13 @@
   "releaseArtifacts": [
     {
       "name": "OmniView-Setup-1.7.0-x64.exe",
-      "bytes": 88351377,
-      "sha256": "ffec097c280759062b7fc01735f78dfb21cc0b482c3886c0e7e95558ca48def0"
+      "bytes": 88351402,
+      "sha256": "7ce879a42e12f40c5d7e2b8952f3500d150527e3d0ed905107c0541c5e7a538b"
     },
     {
       "name": "OmniView-Portable-1.7.0-x64.exe",
-      "bytes": 88177919,
-      "sha256": "7248f59f5f2394b500c6f0ace3f5079843d499dbe1c28be41686d900c85019c7"
+      "bytes": 88177949,
+      "sha256": "7afb1d5cbc8a74286cbc697d5179a0639763c79409b6b68ee8f2f0a42dd25caa"
     }
   ],
   "historicalReleaseArtifacts": [
@@ -4589,5 +4589,22 @@
         ]
       }
     ]
+  },
+  "benchmarkBuildArtifacts": [
+    {
+      "name": "OmniView-Setup-1.7.0-x64.exe",
+      "bytes": 88351377,
+      "sha256": "ffec097c280759062b7fc01735f78dfb21cc0b482c3886c0e7e95558ca48def0"
+    },
+    {
+      "name": "OmniView-Portable-1.7.0-x64.exe",
+      "bytes": 88177919,
+      "sha256": "7248f59f5f2394b500c6f0ace3f5079843d499dbe1c28be41686d900c85019c7"
+    }
+  ],
+  "githubReleaseBuild": {
+    "sourceCommit": "e603f4d5fb677f939f25f02b7d9b5cf9317f2058",
+    "workflowRun": "https://github.com/4Raisan/OmniView/actions/runs/38160325452",
+    "packagedChecksPassed": 28
   }
 }
