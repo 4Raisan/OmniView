@@ -222,16 +222,42 @@ else {
     ipcMain.handle('save-file', async (_event, { name, bytes }) => {
       if (!(bytes instanceof Uint8Array) || bytes.byteLength > MAX_FILE_SIZE) throw new Error('Invalid export data.');
       const result = await dialog.showSaveDialog(mainWindow, { defaultPath: path.basename(name) });
-      
-      
-      
+      if (result.canceled) return false;
+      await fs.writeFile(result.filePath, Buffer.from(bytes));
+      return true;
     });
-    
-    
-    
-    
-    
-    
+    mainWindow.webContents.on('did-start-loading', () => {
+      rendererReady = false;
+      for (const token of mediaFiles.keys()) releaseMedia(token);
+      editFiles.clear();
+    });
+    mainWindow.webContents.on('did-finish-load', () => { mainWindow.allowEditedReload = false; });
+    ipcMain.on('viewer-ready', event => {
+      if (event.sender !== mainWindow.webContents) return;
+      rendererReady = true;
+      const paths = pendingPaths;
+      pendingPaths = [];
+      openPaths(paths);
+    });
+    Menu.setApplicationMenu(Menu.buildFromTemplate([
+      { label: 'File', submenu: [
+        { label: 'Open…', accelerator: 'CmdOrCtrl+O', click: pickFiles },
+        { label: 'Save text', accelerator: 'CmdOrCtrl+S', click: () => mainWindow.webContents.send('save-document', false) },
+        { label: 'Save text as…', accelerator: 'CmdOrCtrl+Shift+S', click: () => mainWindow.webContents.send('save-document', true) },
+        { label: 'Close document', accelerator: 'CmdOrCtrl+W', click: () => mainWindow.webContents.send('close-document') },
+        { label: 'Print…', accelerator: 'CmdOrCtrl+P', click: () => mainWindow.webContents.send('print-document') },
+        { type: 'separator' }, { role: 'quit' }
+      ] },
+      { label: 'Edit', submenu: [{ role: 'copy' }, { role: 'selectAll' }] },
+      { label: 'View', submenu: [{ role: 'togglefullscreen' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }] },
+      { label: 'Help', submenu: [
+        { label: 'About OmniView', click: () => dialog.showMessageBox(mainWindow, { title: 'OmniView', message: `OmniView ${viewerVersion}`, detail: 'Any File. One Viewer.\n\nhttps://github.com/4Raisan/OmniView\n\nIf OmniView helps you, star the repository to support the project.\nShare ideas and feedback in GitHub Discussions.\n\nView and edit supported files locally.' }) },
+        { label: 'GitHub repository — star to support', click: () => shell.openExternal('https://github.com/4Raisan/OmniView') },
+        { label: 'Discussions — ideas and feedback', click: () => shell.openExternal('https://github.com/4Raisan/OmniView/discussions/5') }
+      ] }
+    ]));
+    mainWindow.setMenuBarVisibility(false);
+    mainWindow.loadFile(entry);
   });
-  
+  app.on('window-all-closed', () => app.quit());
 }

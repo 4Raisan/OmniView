@@ -572,20 +572,51 @@ class OmniViewApp {
         else this.openFilePicker();
       };
       el.onclick = reopen;
-      el.onkeydown = event => { if (event.key === 'Enter' || event.key === ' ') {   } };
-      
-      
+      el.onkeydown = event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); reopen(); } };
+      el.innerHTML = `
+        <span>${getFileTypeIcon(item.type)}</span>
+        <div class="recent-item-info">
+          <span class="recent-item-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>
+          <span class="recent-item-meta">${item.missing ? 'Moved or deleted' : formatFileSize(item.size)}</span>
+        </div>
+      `;
+      this.recentListEl.appendChild(el);
     });
   }
 
-  
+  updateStatus(tab) {
+    if (this.statusFilename) this.statusFilename.textContent = tab.name;
+    if (this.statusType) this.statusType.textContent = tab.type.toUpperCase();
+    if (this.statusSize) this.statusSize.textContent = formatFileSize(tab.size);
+  }
 
-  
+  clearStatus() {
+    if (this.statusFilename) this.statusFilename.textContent = 'No file open';
+    if (this.statusType) this.statusType.textContent = 'READY';
+    if (this.statusSize) this.statusSize.textContent = '0 B';
+  }
 
-  
+  updateSidebarDetails(tab) {
+    if (!this.sidebarDetailsEl) return;
+    this.sidebarDetailsEl.innerHTML = `
+      <h4>Active File</h4>
+      <div class="file-meta-row"><span>Name:</span><span title="${escapeHtml(tab.name)}">${escapeHtml(tab.name)}</span></div>
+      <div class="file-meta-row"><span>Type:</span><span>${tab.type.toUpperCase()}</span></div>
+      <div class="file-meta-row"><span>Size:</span><span>${formatFileSize(tab.size)}</span></div>
+    `;
+  }
 
-  
+  clearSidebarDetails() {
+    if (!this.sidebarDetailsEl) return;
+    this.sidebarDetailsEl.innerHTML = `
+      <h4>Active File</h4>
+      <div style="color: var(--text-muted); font-size: 11px;">No active document</div>
+    `;
+  }
 }
 
 // Boot application
-
+window.addEventListener('DOMContentLoaded', () => {
+  const app = new OmniViewApp();
+  app.init();
+});

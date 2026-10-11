@@ -1,33 +1,17 @@
 {
   "name": "multi-viewer",
   "version": "1.7.0",
-  "description": "OmniView — Any File. One Viewer. Offline desktop file viewer",
+  "description": "OmniView \u2014 Any File. One Viewer. Offline desktop file viewer",
   "type": "module",
   "main": "electron/main.cjs",
-  "author": "4Raisan",
-  "dependencies": {
-    "docx-preview": "^0.4.1",
-    "dompurify": "^3.4.16",
-    "highlight.js": "^11.12.0",
-    "jszip": "^3.10.2",
-    "marked": "^18.1.0",
-    "pdfjs-dist": "^6.4.299",
-    "xlsx": "file:vendor/xlsx-0.20.3.tgz"
-  },
-  "devDependencies": {
-    "@playwright/test": "^1.64.0",
-    "electron": "^40.10.2",
-    "electron-builder": "^26.15.3",
-    "vite": "^8.3.4"
-  },
   "scripts": {
     "dev": "vite",
     "build": "vite build && node scripts/copy-pdf-assets.mjs",
     "preview": "vite preview",
     "start": "electron .",
     "desktop": "npm run build && electron .",
-    "test": "playwright test",
     "package": "npm run build && electron-builder --win nsis --x64",
+    "test": "playwright test",
     "package:installer": "npm run package",
     "package:portable": "npm run build && electron-builder --win portable --x64"
   },
@@ -43,6 +27,22 @@
     "fast",
     "lightweight"
   ],
+  "dependencies": {
+    "docx-preview": "^0.4.1",
+    "dompurify": "^3.4.16",
+    "highlight.js": "^11.12.0",
+    "jszip": "^3.10.2",
+    "marked": "^18.1.0",
+    "pdfjs-dist": "^6.4.299",
+    "xlsx": "file:vendor/xlsx-0.20.3.tgz"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.0",
+    "electron": "^40.10.2",
+    "electron-builder": "^26.15.3",
+    "vite": "^8.3.4"
+  },
+  "author": "4Raisan",
   "build": {
     "appId": "local.multiviewer.desktop",
     "productName": "OmniView",
@@ -81,5 +81,10 @@
     "electronLanguages": [
       "en-US"
     ]
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/4Raisan/OmniView.git"
+  },
+  "homepage": "https://github.com/4Raisan/OmniView"
 }
