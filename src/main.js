@@ -470,11 +470,38 @@ class OmniViewApp {
       tab.toolbar = document.createElement('div');
       tab.surface.innerHTML = '<div class="viewer-loading"><div class="spinner"></div><p>Opening file…</p></div>';
     }
-    
-    
-    
-    
-    
+    this.viewerCanvas.replaceChildren(tab.surface);
+    this.contextToolbar.replaceChildren(tab.toolbar);
+    if (tab.started) { tab.viewer?.resume?.(); return; }
+    tab.started = true;
+    try {
+      const module = await viewerModules[tab.type]();
+      if (tab.closed) return;
+      if (this.activeTabId !== tab.id) { tab.started = false; return; }
+      const Viewer = Object.values(module)[0];
+      tab.viewer = new Viewer(tab.surface, tab.toolbar, nestedFile => {
+        this.loadFile(new File([nestedFile.buffer], nestedFile.name));
+      });
+      await tab.viewer.render(tab.data, tab.name);
+      if ([FILE_TYPES.CODE, FILE_TYPES.MARKDOWN].includes(tab.type) && window.desktop) {
+        new TextEditor(tab.viewer, tab.editMeta || { eligible: new TextEncoder().encode(tab.viewer.rawText).byteLength <= 2 * 1024 * 1024, bom: false, lineEnding: '\n' }, result => {
+          if (tab.closed) { window.desktop.releaseEditFile(result.token); return; }
+           
+          
+          
+          
+        }, dirty => {
+          
+          
+          
+        });
+      }
+      // Parsed viewers own their state; do not keep an extra original file buffer.
+      
+      
+    } catch (error) {
+      
+    }
   }
 
   

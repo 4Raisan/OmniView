@@ -1302,3 +1302,5 @@ body {
 .file-meta-row { gap: 10px; align-items: flex-start; }
 .file-meta-row span:first-child { flex-shrink: 0; }
 .file-meta-row span:last-child { min-width: 0; text-align: right; overflow-wrap: anywhere; }
+@media print { #sidebar-resize-handle { display: none !important; } }
+
