@@ -355,33 +355,204 @@ test('five additional dark themes are distinct, selectable and remembered', asyn
   await expect(page.locator('.app-brand')).toHaveCount(0);
   const colors = new Set();
   for (const theme of ['dark', 'midnight', 'graphite', 'forest', 'violet', 'ember']) {
-    
-    
-    
+    await page.getByLabel('Theme', { exact: true }).selectOption(theme);
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    colors.add(await page.evaluate(() => getComputedStyle(document.body).backgroundColor));
   }
-  
-  
-  
-  
-  
-  
-  
+  expect(colors.size).toBe(6);
+  await page.reload();
+  await expect(page.getByLabel('Theme', { exact: true })).toHaveValue('ember');
+  await page.locator('#btn-toggle-theme').click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.locator('#btn-toggle-theme').click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'ember');
 });
 
+test('text editing preserves UTF-8 BOM and CRLF, draft tabs and safe close', async () => {
+  const target = path.join(os.tmpdir(), `mv-edit-${Date.now()}.py`);
+  await fs.writeFile(target, '\uFEFFprint("old")\r\n');
+  await page.locator('#file-picker-input').setInputFiles(target);
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByLabel('Edit document text').fill('print("héllo")\n');
+  await expect(page.locator('.edit-state')).toHaveText('Unsaved');
+  await open('other-edit.txt', 'another tab', 'text/plain');
+  await page.locator('.file-tab').filter({ has: page.locator('.tab-title[title="' + path.basename(target) + '"]') }).click();
+  await expect(page.getByLabel('Edit document text')).toHaveValue('print("héllo")\n');
+  await page.getByRole('button', { name: 'Preview', exact: true }).click();
+  await expect(page.locator('.code-block')).toContainText('héllo');
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.keyboard.press('Control+s');
+  await expect.poll(async () => (await fs.readFile(target)).toString()).toBe('\uFEFFprint("héllo")\r\n');
+  await expect(page.locator('.edit-state')).toHaveText('');
+  await page.getByLabel('Edit document text').fill('unsaved');
+  await application.evaluate(({ dialog }) => { dialog.showMessageBox = async () => ({ response: 2 }); });
+  await page.keyboard.press('F5');
+  await expect(page.getByLabel('Edit document text')).toHaveValue('unsaved');
+  await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].close());
+  await expect(page.getByLabel('Edit document text')).toHaveValue('unsaved');
+  await page.keyboard.press('Control+w');
+  await expect(page.getByLabel('Edit document text')).toHaveValue('unsaved');
+  await application.evaluate(({ dialog }) => { dialog.showMessageBox = async () => ({ response: 1 }); });
+  await page.keyboard.press('Control+w');
+  await expect(page.locator('#status-filename')).toHaveText('other-edit.txt');
+  expect((await fs.readFile(target)).toString()).toBe('\uFEFFprint("héllo")\r\n');
+});
 
+test('editing detects external changes and retains drafts through cancelled Save As', async () => {
+  const target = path.join(os.tmpdir(), `mv-conflict-${Date.now()}.txt`);
+  const output = target + '.saved.txt';
+  await fs.writeFile(target, 'original');
+  await page.locator('#file-picker-input').setInputFiles(target);
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByLabel('Edit document text').fill('my edits');
+  await fs.writeFile(target, 'external edits');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.locator('.edit-error')).toContainText('changed outside');
+  expect(await fs.readFile(target, 'utf8')).toBe('external edits');
+  await application.evaluate(({ dialog }) => { dialog.showSaveDialog = async () => ({ canceled: true }); });
+  await page.getByRole('button', { name: 'Save As', exact: true }).click();
+  await expect(page.locator('.edit-state')).toHaveText('Unsaved');
+  await application.evaluate(({ dialog }, target) => { dialog.showSaveDialog = async () => ({ canceled: false, filePath: target }); }, output);
+  await page.getByRole('button', { name: 'Save As', exact: true }).click();
+  await expect.poll(() => fs.readFile(output, 'utf8').catch(() => '')).toBe('my edits');
+  await expect(page.locator('.edit-state')).toHaveText('');
+});
 
+test('editing excludes oversized and non-UTF8 files', async () => {
+  await open('too-large.txt', 'a'.repeat(2 * 1024 * 1024 + 1), 'text/plain');
+  await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeDisabled();
+  await open('invalid-encoding.txt', Buffer.from([0xff, 0xfe, 65, 0]), 'text/plain');
+  await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeDisabled();
+});
 
+test('font size changes text only and persists after refresh', async () => {
+  await open('font.py', 'print("hello")', 'text/plain');
+  await page.getByLabel('Font size', { exact: true }).selectOption('1');
+  const before = await page.locator('.code-block').evaluate(el => parseFloat(getComputedStyle(el).fontSize));
+  const zoom = await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.getZoomFactor());
+  await page.getByLabel('Font size', { exact: true }).selectOption('1.5');
+  expect(await page.locator('.code-block').evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeCloseTo(before * 1.5);
+  expect(await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.getZoomFactor())).toBe(zoom);
+  await page.reload();
+  await expect(page.getByLabel('Font size', { exact: true })).toHaveValue('1.5');
+  await page.getByLabel('Font size', { exact: true }).selectOption('1');
+});
 
+test('compact tabs retain icons and ten filename characters only on overflow', async () => {
+  await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1280, 850));
+  await open('width-check-document.txt', 'width check', 'text/plain');
+  await expect(page.locator('#header-tabs-list')).not.toHaveClass(/compact-tabs/);
+  for (let i = 0; i < 12; i++) await open(`width-check-long-name-${i}.txt`, 'text', 'text/plain');
+  await expect(page.locator('#header-tabs-list')).toHaveClass(/compact-tabs/);
+  const widths = await page.locator('.file-tab').last().evaluate(el => ({ normal: Number(el.dataset.normalWidth), actual: el.getBoundingClientRect().width }));
+  expect(widths.actual).toBeLessThan(widths.normal);
+  await expect(page.locator('.file-tab').last().locator('.tab-title')).toHaveText('width-chec…');
+  await expect(page.locator('.file-tab').last().locator('.tab-icon')).toBeVisible();
+  for (let i = 0; i < 12; i++) await page.keyboard.press('Control+w');
+  await expect(page.locator('#header-tabs-list')).not.toHaveClass(/compact-tabs/);
+});
 
+test('overflow tabs remain reachable at a narrow window', async () => {
+  await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(760, 700));
+  await page.getByLabel('Font size', { exact: true }).selectOption('1.5');
+  for (let i = 0; i < 18; i++) await open(`overflow-document-${i}.txt`, `content ${i}`, 'text/plain');
+  await expect(page.locator('#tab-picker')).toHaveCount(0);
+  const before = await page.locator('#header-tabs-list').evaluate(el => el.scrollLeft);
+  await page.getByLabel('Scroll tabs left').click();
+  expect(await page.locator('#header-tabs-list').evaluate(el => el.scrollLeft)).toBeLessThan(before);
+  for (let i = 0; i < 60 && await page.locator('#header-tabs-list').evaluate(el => el.scrollLeft > 0); i++) await page.getByLabel('Scroll tabs left').click();
+  await expect(page.locator('.file-tab').first()).toBeInViewport();
+  await page.locator('.file-tab').first().click();
+  await page.locator('.file-tab').last().click();
+  await expect(page.locator('#status-filename')).toHaveText('overflow-document-17.txt');
+  await expect(page.locator('.file-tab.active')).toBeInViewport();
+  const right = await page.locator('.header-right').boundingBox();
+  expect(right.x + right.width).toBeLessThanOrEqual(await page.evaluate(() => innerWidth));
+  await page.getByLabel('Scroll tabs left').click();
+  await page.getByLabel('Scroll tabs right').click();
+  await page.getByLabel('Font size', { exact: true }).selectOption('1');
+  await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1280, 850));
+});
 
+test('copy uses selected text without line numbers, and otherwise the full document', async () => {
+  await page.evaluate(() => {
+    window.savedWriteText = navigator.clipboard.writeText;
+    navigator.clipboard.writeText = async text => { window.copiedText = text; };
+  });
+  try {
+    await open('selection.txt', 'alpha hello\n    beta world\nlast', 'text/plain');
+    await expect(page.locator('.line-code')).toHaveCount(3);
+    await page.evaluate(() => {
+      const lines = document.querySelectorAll('.line-code');
+      window.getSelection().setBaseAndExtent(lines[1].firstChild, 8, lines[0].firstChild, 6);
+    });
+    await page.getByTitle('Copy selected text, or all text', { exact: true }).click();
+    await expect(page.locator('.document-copy')).toHaveClass(/selection-ready/);
+    expect(await page.evaluate(() => window.copiedText)).toBe('hello\n    beta');
+    await page.evaluate(() => window.getSelection().removeAllRanges());
+    await page.getByTitle('Copy selected text, or all text', { exact: true }).click();
+    expect(await page.evaluate(() => window.copiedText)).toBe('alpha hello\n    beta world\nlast');
+    await open('selection.md', '# Heading\n\n**hello** world', 'text/markdown');
+    await expect(page.locator('.markdown-body strong')).toHaveText('hello');
+    await page.evaluate(() => {
+      const node = document.querySelector('.markdown-body strong').firstChild;
+      window.getSelection().setBaseAndExtent(node, 0, node, 5);
+    });
+    await page.getByTitle('Copy selected text, or raw Markdown', { exact: true }).click();
+    expect(await page.evaluate(() => window.copiedText)).toBe('hello');
+    await page.evaluate(() => window.getSelection().removeAllRanges());
+    await page.getByTitle('Copy selected text, or raw Markdown', { exact: true }).click();
+    expect(await page.evaluate(() => window.copiedText)).toBe('# Heading\n\n**hello** world');
+  } finally {
+    await page.evaluate(() => { navigator.clipboard.writeText = window.savedWriteText; });
+  }
+});
 
+test('recent files keep 25 real paths and reopen changed files after refresh and restart', async () => {
+  await page.locator('#btn-clear-recent').click();
+  const folder = await fs.mkdtemp(path.join(os.tmpdir(), 'multiviewer-recent-'));
+  const targets = Array.from({ length: 26 }, (_, i) => path.join(folder, `recent-${i}.txt`));
+  await Promise.all(targets.map((target, i) => fs.writeFile(target, `original ${i}`)));
+  await application.evaluate(({ dialog }, paths) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: paths }); }, targets);
+  await page.locator('#btn-open-file').click();
+  await expect(page.locator('#status-filename')).toHaveText('recent-25.txt');
+  await expect(page.locator('.recent-file-item')).toHaveCount(25);
+  await fs.writeFile(targets[25], 'changed on disk');
+  await page.reload();
+  await expect(page.locator('.recent-file-item')).toHaveCount(25);
+  await page.locator('.recent-file-item').filter({ hasText: 'recent-25.txt' }).click();
+  await expect(page.locator('.code-block')).toContainText('changed on disk');
+  await page.locator('#file-picker-input').setInputFiles(targets[23]);
+  await expect(page.locator('#status-filename')).toHaveText('recent-23.txt');
+  await expect(page.locator('.recent-file-item').first()).toContainText('recent-23.txt');
+  await page.locator('.recent-file-item').filter({ hasText: 'recent-25.txt' }).click();
+  await expect(page.locator('.file-tab[data-full-name="recent-25.txt"]')).toHaveCount(1);
+  await expect(page.locator('.file-tab')).toHaveCount(2);
+  await application.close();
+  application = await electron.launch(process.env.MULTIVIEWER_EXECUTABLE
+    ? { executablePath: process.env.MULTIVIEWER_EXECUTABLE, args: [`--user-data-dir=${testProfile}`] }
+    : { args: [path.join(__dirname, '..', 'electron', 'main.cjs'), `--user-data-dir=${testProfile}`] });
+  page = await application.firstWindow();
+  await expect(page.locator('.recent-file-item')).toHaveCount(25);
+  await fs.unlink(targets[24]);
+  await page.reload();
+  await expect(page.locator('.recent-file-item').filter({ hasText: 'recent-24.txt' })).toContainText('Moved or deleted');
+  await page.locator('.recent-file-item').filter({ hasText: 'recent-25.txt' }).click();
+  await expect(page.locator('.code-block')).toContainText('changed on disk');
+  await page.locator('#btn-clear-recent').click();
+  await page.reload();
+  await expect(page.locator('.recent-file-item')).toHaveCount(0);
+});
 
-
-
-
-
-
-
-
-
-
+test('a file passed on startup opens after the renderer is ready', async () => {
+  const filePath = path.join(os.tmpdir(), 'multi viewer startup check.txt');
+  await fs.writeFile(filePath, 'Opened directly from Windows file arguments');
+  await application.close();
+  application = await electron.launch(process.env.MULTIVIEWER_EXECUTABLE
+    ? { executablePath: process.env.MULTIVIEWER_EXECUTABLE, args: [filePath, `--user-data-dir=${testProfile}`] }
+    : { args: [path.join(__dirname, '..', 'electron', 'main.cjs'), filePath, `--user-data-dir=${testProfile}`] });
+  page = await application.firstWindow();
+  await expect(page.locator('#status-filename')).toHaveText('multi viewer startup check.txt');
+  await expect(page.locator('.code-block')).toContainText('Opened directly from Windows file arguments');
+  await fs.unlink(filePath);
+});
