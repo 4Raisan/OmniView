@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc"><title id="title">OmniView architecture</title><desc id="desc">Local files pass through the Windows app and an isolated bridge into a tabbed workspace with format-specific readers. Media streams from disk; hidden previews are released and text editing is limited to 2 MB.</desc><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="none" stroke="#1268e8" stroke-width="1.5"/></marker><marker id="greenArrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="none" stroke="#0b8b75" stroke-width="1.5"/></marker>
+<symbol id="doc" viewBox="0 0 64 64"><path d="M15 6h23l12 12v40H15zM38 6v13h12M23 29h19M23 38h19M23 47h12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="sheet" viewBox="0 0 64 64"><rect x="8" y="11" width="48" height="43" rx="5" fill="none" stroke="currentColor" stroke-width="3"/><path d="M8 24h48M8 35h48M8 45h48M23 24v30M40 24v30" stroke="currentColor" stroke-width="2"/></symbol>
+<symbol id="code" viewBox="0 0 64 64"><path d="m23 17-15 15 15 15m18-30 15 15-15 15M36 12l-8 40" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="image" viewBox="0 0 64 64"><rect x="8" y="10" width="48" height="44" rx="5" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="23" cy="24" r="5" fill="currentColor"/><path d="m9 47 16-12 10 7 11-17 10 20" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/></symbol>
+<symbol id="play" viewBox="0 0 64 64"><circle cx="32" cy="32" r="24" fill="none" stroke="currentColor" stroke-width="3"/><path d="m27 21 17 11-17 11z" fill="currentColor"/></symbol>
+<symbol id="zip" viewBox="0 0 64 64"><path d="M15 6h23l12 12v40H15zM38 6v13h12" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M29 8v6h6v6h-6v6h6v6h-6v6" fill="none" stroke="currentColor" stroke-width="3"/><rect x="27" y="38" width="10" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
+<symbol id="shield" viewBox="0 0 64 64"><path d="m32 6 23 9v18c0 12-13 22-23 27C22 55 9 45 9 33V15z" fill="none" stroke="currentColor" stroke-width="3"/><path d="m21 32 7 7 15-17" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></symbol>
+<symbol id="chip" viewBox="0 0 64 64"><rect x="15" y="15" width="34" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="3"/><rect x="24" y="24" width="16" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M23 5v10M32 5v10M41 5v10M23 49v10M32 49v10M41 49v10M5 23h10M5 32h10M5 41h10M49 23h10M49 32h10M49 41h10" stroke="currentColor" stroke-width="3"/></symbol>
+<symbol id="pencil" viewBox="0 0 64 64"><path d="m15 39 27-27c5-5 13 3 8 8L23 47l-12 5zM37 17l9 9M14 40l9 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/></symbol>
+</defs><rect width="1200" height="560" fill="#ffffff"/>
+<g font-family="Segoe UI,Arial,sans-serif" fill="#14243f">
+<text x="56" y="62" font-size="28" font-weight="700">OmniView</text>
+<text x="56" y="94" font-size="16" fill="#64748b">Any File. One Viewer.</text>
+<use href="#doc" x="80" y="194" width="72" height="72" color="#1268e8"/>
+<text x="116" y="301" text-anchor="middle" font-size="19" font-weight="600">Your files</text>
+<text x="116" y="326" text-anchor="middle" font-size="14" fill="#64748b">Open · drop · Open with</text>
+<path d="M174 231h86" stroke="#1268e8" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="286" y="194" width="84" height="64" rx="8" fill="none" stroke="#1268e8" stroke-width="2"/>
+<path d="M286 210h84m-65 17h46m-46 13h30" stroke="#1268e8" stroke-width="2"/>
+<text x="328" y="301" text-anchor="middle" font-size="19" font-weight="600">Windows app</text>
+<text x="328" y="326" text-anchor="middle" font-size="14" fill="#64748b">Files · menus · safe saves</text>
+<path d="M395 231h63" stroke="#1268e8" stroke-width="2"/>
+<use href="#shield" x="464" y="210" width="42" height="42" color="#1268e8"/>
+<text x="485" y="281" text-anchor="middle" font-size="13" fill="#64748b">Isolated bridge</text>
+<path d="M513 231h61" stroke="#1268e8" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="609" y="190" width="80" height="80" rx="21" fill="#1268e8"/>
+<circle cx="649" cy="230" r="25" fill="none" stroke="white" stroke-width="4"/>
+<path d="M649 205v50m-25-25h50" stroke="white" stroke-width="3"/>
+<circle cx="649" cy="230" r="8" fill="#1268e8" stroke="white" stroke-width="3"/>
+<text x="649" y="301" text-anchor="middle" font-size="19" font-weight="600">One workspace</text>
+<text x="649" y="326" text-anchor="middle" font-size="14" fill="#64748b">Tabs · search · previews</text>
+<path d="M721 231h75m0-74v150m0-150h37m-37 75h37m-37 75h37" fill="none" stroke="#1268e8" stroke-width="2"/>
+<use href="#doc" x="853" y="135" width="42" height="42" color="#1268e8"/>
+<text x="913" y="161" font-size="17">PDF, documents &amp; sheets</text>
+<use href="#code" x="853" y="210" width="42" height="42" color="#1268e8"/>
+<text x="913" y="236" font-size="17">Text &amp; Markdown</text>
+<use href="#play" x="853" y="285" width="42" height="42" color="#1268e8"/>
+<text x="913" y="311" font-size="17">Images, media &amp; ZIP</text>
+<path d="M328 347v40h545v-46" fill="none" stroke="#0b8b75" stroke-width="1.5" stroke-dasharray="5 5"/>
+<rect x="457" y="372" width="294" height="28" fill="white"/>
+<text x="604" y="391" text-anchor="middle" font-size="14" fill="#0b8b75">Media streams directly from disk</text>
+<path d="M56 441h1088" stroke="#e2e8f0"/>
+<use href="#shield" x="56" y="469" width="30" height="30" color="#0b8b75"/>
+<text x="100" y="484" font-size="15" font-weight="600">Private by design</text>
+<text x="100" y="508" font-size="13" fill="#64748b">Your files stay on this device.</text>
+<use href="#chip" x="432" y="469" width="30" height="30" color="#1268e8"/>
+<text x="476" y="484" font-size="15" font-weight="600">Loads on demand</text>
+<text x="476" y="508" font-size="13" fill="#64748b">Hidden previews free their resources.</text>
+<use href="#pencil" x="834" y="469" width="30" height="30" color="#1268e8"/>
+<text x="878" y="484" font-size="15" font-weight="600">Lightweight editing</text>
+<text x="878" y="508" font-size="13" fill="#64748b">Text files up to 2 MB.</text></g></svg>
+
