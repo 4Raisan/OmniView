@@ -88,7 +88,7 @@ jobs:
               exit 1
             fi
           else
-            gh release create "$tag" --draft --target "$GITHUB_SHA" --title "OmniView ${tag#v}" --notes 'Windows, Linux and macOS downloads. Packaged desktop checks passed on every target. Builds are unsigned; macOS builds are not notarized.'
+            gh release create "$tag" --draft --target "$GITHUB_SHA" --title "OmniView ${tag#v}" --notes 'Windows, Linux and macOS downloads. Packaged desktop checks passed on every target. Windows builds are unsigned. Mac builds use ad-hoc signing and are not notarized.'
           fi
           gh release edit "$tag" --target "$GITHUB_SHA"
           (cd release && sha256sum *.exe *.AppImage *.deb *.dmg > SHA256SUMS.txt)

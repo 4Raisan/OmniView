@@ -90,7 +90,7 @@
       "category": "public.app-category.productivity",
       "icon": "app/resources/app-icon-mac.png",
       "artifactName": "OmniView-${version}-mac-${arch}.${ext}",
-      "identity": null,
+      "identity": "-",
       "fileAssociations": [
         {
           "ext": "pdf",
@@ -119,7 +119,8 @@
         }
       },
       "executableName": "OmniView",
-      "syncDesktopName": true
+      "syncDesktopName": true,
+      "maintainer": "4Raisan <207299898+4Raisan@users.noreply.github.com>"
     }
   },
   "repository": {

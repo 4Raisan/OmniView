@@ -39,7 +39,7 @@ let pendingPaths = [];
 const MAX_FILE_SIZE = 256 * 1024 * 1024;
 const argumentFiles = argv => argv.filter(arg => !arg.startsWith('-')).map(arg => {
   try { return arg.startsWith('file://') ? fileURLToPath(arg) : arg; } catch { return ''; }
-}).filter(arg => path.isAbsolute(arg) && !(process.platform === 'win32' && /\.exe$/i.test(arg)));
+}).filter(arg => path.isAbsolute(arg) && path.resolve(arg) !== path.resolve(__filename) && !(process.platform === 'win32' && /\.exe$/i.test(arg)));
 
 async function openPaths(paths) {
   if (!mainWindow || !rendererReady) {

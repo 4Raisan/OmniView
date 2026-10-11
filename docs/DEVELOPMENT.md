@@ -6,7 +6,7 @@ Use Node.js 22.12 or newer. Install dependencies once with `npm ci`, then use `n
 
 ```text
 app/       Desktop process, viewers, interface and app icons
- docs/     Guides, measured performance, logo and architecture
+docs/     Guides, measured performance, logo and architecture
  tooling/  Build configuration, tests, scripts and pinned parser
 ```
 
@@ -25,7 +25,7 @@ npm run package:mac        # macOS DMG, for the build machine's architecture
 
 Build macOS packages on a Mac. GitHub Actions builds separately for Apple Silicon and Intel. Linux packages are x64; other Linux architectures aren't included in these downloads. The AppImage needs executable permission and a system that supports AppImage/FUSE; use the Debian package on compatible distributions. PDF Open with is registered by the Windows installer, Linux desktop package and macOS app; choosing a default stays with the user.
 
-Mac builds are unsigned and not notarized. macOS may require approval in System Settings → Privacy & Security. Trusted signing/notarization requires Apple developer credentials. Windows builds are also unsigned. Keep signing keys and credentials outside Git.
+Mac builds use a local ad-hoc signature, without a trusted publisher certificate or notarization. macOS may require approval in System Settings → Privacy & Security. Trusted signing/notarization requires Apple developer credentials. Windows builds are also unsigned. Keep signing keys and credentials outside Git.
 
 ## Editing and formats
 

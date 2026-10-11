@@ -11,8 +11,10 @@ test.beforeAll(async () => {
   testProfile = await fs.mkdtemp(path.join(os.tmpdir(), 'multiviewer-test-profile-'));
   application = await electron.launch(process.env.MULTIVIEWER_EXECUTABLE
     ? { executablePath: process.env.MULTIVIEWER_EXECUTABLE, args: [...ciArgs, `--user-data-dir=${testProfile}`] }
-    : { args: [...ciArgs, path.join(__dirname, '..', '..', 'app', 'electron', 'main.cjs'), `--user-data-dir=${testProfile}`] });
+    : { args: [path.join(__dirname, '..', '..', 'app', 'electron', 'main.cjs'), ...ciArgs, `--user-data-dir=${testProfile}`] });
+  application.process().stderr.on('data', data => console.error(data.toString()));
   page = await application.firstWindow();
+  page.on('pageerror', error => console.error('Renderer error:', error.message));
   await page.waitForSelector('#btn-hero-browse');
   originalStorage = await page.evaluate(() => ({ ...localStorage }));
 });
@@ -532,7 +534,7 @@ test('recent files keep 25 real paths and reopen changed files after refresh and
   await application.close();
   application = await electron.launch(process.env.MULTIVIEWER_EXECUTABLE
     ? { executablePath: process.env.MULTIVIEWER_EXECUTABLE, args: [...ciArgs, `--user-data-dir=${testProfile}`] }
-    : { args: [...ciArgs, path.join(__dirname, '..', '..', 'app', 'electron', 'main.cjs'), `--user-data-dir=${testProfile}`] });
+    : { args: [path.join(__dirname, '..', '..', 'app', 'electron', 'main.cjs'), ...ciArgs, `--user-data-dir=${testProfile}`] });
   page = await application.firstWindow();
   await expect(page.locator('.recent-file-item')).toHaveCount(25);
   await fs.unlink(targets[24]);
@@ -551,7 +553,7 @@ test('a file passed on startup opens after the renderer is ready', async () => {
   await application.close();
   application = await electron.launch(process.env.MULTIVIEWER_EXECUTABLE
     ? { executablePath: process.env.MULTIVIEWER_EXECUTABLE, args: [...ciArgs, require('node:url').pathToFileURL(filePath).href, `--user-data-dir=${testProfile}`] }
-    : { args: [...ciArgs, path.join(__dirname, '..', '..', 'app', 'electron', 'main.cjs'), require('node:url').pathToFileURL(filePath).href, `--user-data-dir=${testProfile}`] });
+    : { args: [path.join(__dirname, '..', '..', 'app', 'electron', 'main.cjs'), ...ciArgs, require('node:url').pathToFileURL(filePath).href, `--user-data-dir=${testProfile}`] });
   page = await application.firstWindow();
   await expect(page.locator('#status-filename')).toHaveText('multi viewer startup check.txt');
   await expect(page.locator('.code-block')).toContainText('Opened directly from Windows file arguments');

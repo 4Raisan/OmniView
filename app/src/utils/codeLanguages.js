@@ -24,4 +24,3 @@ export async function loadCodeLanguage(extension) {
 }
 
 export { hljs };
-
