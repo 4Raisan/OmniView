@@ -25,7 +25,8 @@
     "build": "vite build && node scripts/copy-pdf-assets.mjs",
     "preview": "vite preview",
     "start": "electron .",
-    "desktop": "npm run build && electron ."
+    "desktop": "npm run build && electron .",
+    "test": "playwright test"
   },
   "keywords": [
     "viewer",
