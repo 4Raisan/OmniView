@@ -1,6 +1,7 @@
 {
   "name": "multi-viewer",
   "version": "1.8.0",
+  "license": "MIT",
   "description": "OmniView — Any File. One Viewer. Offline desktop file viewer",
   "type": "module",
   "main": "app/electron/main.cjs",
@@ -56,6 +57,7 @@
       "app/electron/**/*",
       "app/resources/**/*",
       "package.json",
+      "LICENSE",
       "!node_modules/**/*"
     ],
     "asar": true,

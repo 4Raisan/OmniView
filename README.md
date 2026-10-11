@@ -45,3 +45,7 @@ npm start
 ## Support
 
 [Star OmniView](https://github.com/4Raisan/OmniView) if it helps you. [Share ideas and feedback](https://github.com/4Raisan/OmniView/discussions/5), or [report a problem](https://github.com/4Raisan/OmniView/issues).
+
+## License
+
+[MIT](LICENSE) · Copyright © 2026 4Raisan. Third-party dependencies retain their own licenses.
