@@ -26,7 +26,8 @@
     "preview": "vite preview",
     "start": "electron .",
     "desktop": "npm run build && electron .",
-    "test": "playwright test"
+    "test": "playwright test",
+    "package": "npm run build && electron-builder --win nsis --x64"
   },
   "keywords": [
     "viewer",
@@ -39,5 +40,44 @@
     "csv",
     "fast",
     "lightweight"
-  ]
+  ],
+  "build": {
+    "appId": "local.multiviewer.desktop",
+    "productName": "OmniView",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json",
+      "resources/**/*",
+      "!node_modules/**/*"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "artifactName": "OmniView-Portable-${version}-${arch}.${ext}",
+      "signAndEditExecutable": true,
+      "icon": "resources/app-icon.ico",
+      "signExecutable": false
+    },
+    "portable": {
+      "requestExecutionLevel": "user"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "include": "resources/installer.nsh",
+      "artifactName": "OmniView-Setup-${version}-${arch}.${ext}",
+      "deleteAppDataOnUninstall": false
+    },
+    "electronLanguages": [
+      "en-US"
+    ]
+  }
 }
