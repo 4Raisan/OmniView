@@ -1272,3 +1272,33 @@ body {
 }
 
 .pdf-print-pages { display: none; }
+@media print {
+  body.printing-pdf > * { display: none !important; }
+  body.printing-pdf > .pdf-print-pages { display: block !important; }
+  .pdf-print-pages img { display: block; width: 100%; height: auto; break-after: page; }
+  .pdf-print-pages img:last-child { break-after: auto; }
+}
+
+/* Compact code rows: whitespace between block elements is not source text. */
+.code-block, .code-pre { white-space: normal; margin: 0; }
+.code-line { min-height: 1.6em; align-items: flex-start; }
+.line-code, .line-content { min-width: 0; }
+.line-content { white-space: pre-wrap; }
+.toolbar-nav-group { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.pdf-toolbar { flex-wrap: nowrap; min-width: max-content; }
+.context-toolbar { overflow-x: auto; overflow-y: hidden; flex-shrink: 0; }
+.pdf-viewer-wrapper { height: 100%; min-height: 0; overflow: auto; display: block; position: relative; padding: 24px; scroll-behavior: auto; overflow-anchor: none; }
+.pdf-page { position: relative; flex-shrink: 0; margin: 0 auto 24px; background: white; box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+.pdf-page:last-child { margin-bottom: 0; }
+.pdf-page:not(.rendered)::after { content: 'Loading page ' attr(data-page) '…'; position: absolute; top: 40px; left: 24px; color: #64748b; font-size: calc(13px * var(--font-scale, 1)); }
+.pdf-page-canvas { display: block; }
+.app-sidebar { flex-shrink: 0; min-width: 0; }
+#sidebar-resize-handle { position: relative; width: 0; flex: 0 0 0; z-index: 60; cursor: col-resize; touch-action: none; }
+#sidebar-resize-handle::after { content: ''; position: absolute; left: -4px; top: 0; bottom: 0; width: 8px; }
+#sidebar-resize-handle:hover::after, #sidebar-resize-handle:focus-visible::after { background: var(--accent-color); opacity: .5; }
+.app-sidebar.collapsed + #sidebar-resize-handle { display: none; }
+.resizing-sidebar { cursor: col-resize; user-select: none; }
+.resizing-sidebar .app-sidebar { transition: none; }
+.file-meta-row { gap: 10px; align-items: flex-start; }
+.file-meta-row span:first-child { flex-shrink: 0; }
+.file-meta-row span:last-child { min-width: 0; text-align: right; overflow-wrap: anywhere; }
