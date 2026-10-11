@@ -221,18 +221,57 @@ export class MarkdownViewer {
 
   suspend() {
     clearTimeout(this.findTimer);
-    if (this.editor?.editing) {   }
-    
-    
+    if (this.editor?.editing) { this.editor.suspend(); return; }
+    this.scrollPosition = this.container.firstElementChild?.scrollTop || 0;
+    this.container.replaceChildren();
   }
 
-  
+  resume() {
+    if (this.editor?.editing) { this.editor.resume(); return; }
+    if (!this.container.childElementCount) { this.renderContent(); this.container.firstElementChild.scrollTop = this.scrollPosition || 0; }
+  }
 
-  
+  destroy() { clearTimeout(this.findTimer); this.editor?.destroy(); this.container.replaceChildren(); }
 
-  
+  setupCodeBlockCopyButtons(container) {
+    container.querySelectorAll('pre code').forEach(code => {
+      const language = [...code.classList].find(name => name.startsWith('language-'))?.slice(9);
+      const registered = this.loadedLanguages[language];
+      if (registered && code.textContent.length <= 1_000_000) {
+        code.innerHTML = hljs.highlight(code.textContent, { language: registered }).value;
+        code.classList.add('hljs');
+      }
+    });
+    container.querySelectorAll('a').forEach(a => { a.target = '_blank'; a.rel = 'noopener noreferrer'; });
+    container.querySelectorAll('pre').forEach(pre => {
+      const btn = document.createElement('button');
+      btn.className = 'code-copy-btn';
+      btn.innerHTML = icons.copy;
+      btn.title = 'Copy code snippet';
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const code = pre.querySelector('code')?.textContent || pre.textContent;
+        navigator.clipboard.writeText(code);
+        btn.innerHTML = icons.check;
+        setTimeout(() => { btn.innerHTML = icons.copy; }, 2000);
+      };
+      pre.style.position = 'relative';
+      pre.appendChild(btn);
+    });
+  }
 
-  
+  escapeHtml(str) {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
 
-  
+  showToast(msg) {
+    const toast = document.createElement('div');
+    toast.className = 'toast-notification';
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2500);
+  }
 }

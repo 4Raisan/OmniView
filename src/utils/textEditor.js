@@ -93,10 +93,30 @@ export class TextEditor {
     this.preview = document.createElement('div'); this.preview.className = 'markdown-body';
     wrap.append(this.area, this.preview); this.viewer.container.replaceChildren(wrap); this.updatePreview();
   }
-  
-  
-  
-  
-  
-  
+  updatePreview() { if (this.preview && this.area && !this.suspended) this.viewer.renderLivePreview(this.preview, this.area.value); }
+  suspend() { this.suspended = true; clearTimeout(this.previewTimer); this.preview?.replaceChildren(); }
+  resume() { this.suspended = false; this.updatePreview(); }
+  destroy() { clearTimeout(this.previewTimer); this.area = null; this.preview = null; }
+  async save(saveAs = false) {
+    if (this.saving || !this.meta.eligible) return false;
+    this.error = ''; this.saving = true; this.renderButtons();
+    try {
+      const text = this.text;
+      const normalized = text.replace(/\r\n/g, '\n');
+      const bytes = new TextEncoder().encode((this.meta.bom ? '\uFEFF' : '') + normalized.replace(/\n/g, this.meta.lineEnding || '\n'));
+      if (bytes.byteLength > LIMIT) throw new Error('Edited text exceeds the 2 MB limit. Reduce it before saving.');
+      const result = await window.desktop.saveText({ token: this.meta.token, name: this.viewer.filename, bytes, saveAs });
+      if (!result) return false;
+      this.meta.token = result.token; this.base = normalized; this.changed = false;
+      this.viewer.rawText = text; this.viewer.filename = result.name;
+      this.onSaved(result);
+      return true;
+    } catch (error) { this.error = error.message; return false; }
+    finally { this.saving = false; this.renderButtons(); }
+  }
+  async canClose() {
+    if (!this.dirty) return true;
+    const answer = await window.desktop.confirmEditClose(this.viewer.filename);
+    return answer === 1 || (answer === 0 && await this.save());
+  }
 }
