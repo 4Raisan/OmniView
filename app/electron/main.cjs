@@ -35,6 +35,8 @@ const { version: viewerVersion } = require('../../package.json');
 let mainWindow;
 let rendererReady = false;
 let desktopReady = false;
+let quitRequested = false;
+app.on('before-quit', () => { quitRequested = true; });
 let pendingPaths = [];
 const MAX_FILE_SIZE = 256 * 1024 * 1024;
 const argumentFiles = argv => argv.filter(arg => !arg.startsWith('-')).map(arg => {
@@ -244,7 +246,11 @@ else {
     })).response);
     ipcMain.on('release-edit-file', (_event, token) => editFiles.delete(token));
     ipcMain.on('release-media', (_event, token) => releaseMedia(token));
-    ipcMain.on('allow-close', () => { mainWindow.allowEditedClose = true; mainWindow.close(); });
+    ipcMain.on('allow-close', () => {
+      mainWindow.allowEditedClose = true;
+      if (quitRequested) app.quit(); else mainWindow.close();
+    });
+    ipcMain.on('cancel-close', () => { quitRequested = false; });
     ipcMain.on('allow-reload', () => { mainWindow.allowEditedReload = true; mainWindow.webContents.reload(); });
     ipcMain.on('cancel-reload', () => { mainWindow.webContents.stop(); rendererReady = true; });
     ipcMain.handle('print', () => new Promise(resolve => mainWindow.webContents.print({ printBackground: true }, success => resolve(success))));

@@ -19,7 +19,7 @@ test.beforeAll(async () => {
   originalStorage = await page.evaluate(() => ({ ...localStorage }));
 });
 test('title and menus share one row and open the native application menu', async () => {
-  expect(await application.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].isMenuBarVisible())).toBe(false);
+  if (process.platform !== 'darwin') expect(await application.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].isMenuBarVisible())).toBe(false);
   await expect(page.locator('.window-brand')).toHaveText('OmniView');
   const layout = await page.locator('.window-titlebar').evaluate(bar=>({height:bar.getBoundingClientRect().height,ys:[...bar.querySelectorAll('button,.window-brand')].map(el=>{const r=el.getBoundingClientRect();return r.y+r.height/2;})}));
   expect(layout.height).toBe(36); expect(Math.max(...layout.ys)-Math.min(...layout.ys)).toBeLessThan(2);

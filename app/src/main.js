@@ -199,7 +199,7 @@ class OmniViewApp {
       this.renderRecentFiles();
     });
     window.desktop?.onRequestClose(async () => {
-      for (const tab of this.tabs) if (tab.viewer?.editor && !await tab.viewer.editor.canClose()) return;
+      for (const tab of this.tabs) if (tab.viewer?.editor && !await tab.viewer.editor.canClose()) { window.desktop.cancelClose(); return; }
       window.desktop.allowClose();
     });
     window.desktop?.onRequestReload(async () => {

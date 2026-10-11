@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('desktop', {
   releaseMedia: token => ipcRenderer.send('release-media', token),
   onMedia: callback => ipcRenderer.on('open-media', (_event, file) => callback(file)),
   allowClose: () => ipcRenderer.send('allow-close'),
+  cancelClose: () => ipcRenderer.send('cancel-close'),
   onRequestClose: callback => ipcRenderer.on('request-close', () => callback()),
   allowReload: () => ipcRenderer.send('allow-reload'),
   cancelReload: () => ipcRenderer.send('cancel-reload'),
