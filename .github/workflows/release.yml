@@ -15,7 +15,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - run: npx electron-builder --win nsis portable --x64
+      - run: npx electron-builder --win nsis portable --x64 --publish never
       - name: Check packaged desktop app
         run: npm test
         env:
@@ -35,3 +35,4 @@ jobs:
           gh release upload $tag $setup $portable --clobber
           if ($LASTEXITCODE -ne 0) { throw 'Release upload failed' }
           Get-FileHash -LiteralPath $setup,$portable -Algorithm SHA256 | Format-Table
+
