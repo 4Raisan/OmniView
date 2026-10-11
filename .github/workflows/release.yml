@@ -1,0 +1,37 @@
+name: Build release downloads
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npx electron-builder --win nsis portable --x64
+      - name: Check packaged desktop app
+        run: npm test
+        env:
+          MULTIVIEWER_EXECUTABLE: ${{ github.workspace }}\release\win-unpacked\OmniView.exe
+      - name: Upload verified downloads to draft release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          $version=(Get-Content package.json -Raw | ConvertFrom-Json).version
+          $tag="v$version"
+          gh release edit $tag --target $env:GITHUB_SHA
+          if ($LASTEXITCODE -ne 0) { throw 'Draft release update failed' }
+          $setup="release/OmniView-Setup-$version-x64.exe"
+          $portable="release/OmniView-Portable-$version-x64.exe"
+          gh release upload $tag $setup $portable --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Release upload failed' }
+          Get-FileHash -LiteralPath $setup,$portable -Algorithm SHA256 | Format-Table
