@@ -1,3 +1,4 @@
+const pathKey = value => window.desktop?.platform === 'win32' ? value?.toLowerCase() : value;
 import './style.css';
 import { escapeHtml } from './utils/safeHtml.js';
 import 'highlight.js/styles/github-dark.css';
@@ -64,6 +65,7 @@ class OmniViewApp {
   }
 
   init() {
+    document.documentElement.classList.add(`platform-${window.desktop?.platform || "browser"}`);
     this.applyTheme(this.theme);
     this.applySidebarState();
     this.setupSidebarResize();
@@ -191,7 +193,7 @@ class OmniViewApp {
     });
     window.desktop?.onFile(({ name, bytes, filePath, editToken }) => this.loadFile(new File([bytes], name), filePath, editToken));
     window.desktop?.onMedia(async ({ name, size, filePath, mediaToken, url }) => {
-      const existing = this.tabs.find(tab => tab.filePath?.toLowerCase() === filePath.toLowerCase());
+      const existing = this.tabs.find(tab => pathKey(tab.filePath) === pathKey(filePath));
       if (existing) await this.closeTab(existing.id);
       this.createTab({ name, size, type: FILE_TYPES.MEDIA, data: url, filePath, mediaToken });
       this.renderRecentFiles();
@@ -328,7 +330,7 @@ class OmniViewApp {
         data = await readFileAsArrayBuffer(file);
       }
 
-      const existing = filePath && this.tabs.find(tab => tab.filePath?.toLowerCase() === filePath.toLowerCase());
+      const existing = filePath && this.tabs.find(tab => pathKey(tab.filePath) === pathKey(filePath));
       if (existing && !await this.closeTab(existing.id)) return;
       this.createTab({
         name: file.name,

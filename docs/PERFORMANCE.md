@@ -75,8 +75,8 @@ Run on Windows after installing dependencies and building an unpacked executable
 npm ci
 npm run build
 npx electron-builder --win --x64 --dir
-node scripts/benchmark.cjs "release/win-unpacked/OmniView.exe" "benchmark-results.json" 3
-node scripts/benchmark.cjs "release/win-unpacked/OmniView.exe" "editing-results.json" 3 editing
+node tooling/scripts/benchmark.cjs "release/win-unpacked/OmniView.exe" "benchmark-results.json" 3
+node tooling/scripts/benchmark.cjs "release/win-unpacked/OmniView.exe" "editing-results.json" 3 editing
 ```
 
 Use the same commands with a preserved 1.5.0 unpacked executable for the baseline. Portable extraction and installer time are excluded from startup measurements. Workloads use 12 synthetic 2,500-line Python files, 200 Markdown paragraphs and 64 MiB PCM audio; audio cases retain the text and Markdown tabs. Snapshots follow a 500 ms settling interval. CPU derives from cumulative process CPU time and is divided by logical CPU count. Profiles and input fixtures are temporary and do not touch normal app history.
@@ -96,4 +96,3 @@ A local Microsoft Defender scan of the final 1.7.0 release folder reported no th
 
 
 The GitHub release downloads were rebuilt from commit e603f4d on a Windows runner and passed all 28 packaged desktop checks. The memory measurements above remain from the local 1.7.0 benchmark build; they were not rerun on the runner. Current download checksums are stored in releaseArtifacts, and the original benchmark-build checksums remain in benchmarkBuildArtifacts. The Defender scan above covers that original local build.
-

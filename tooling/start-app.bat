@@ -1,5 +1,5 @@
 @echo off
-cd /d "%~dp0"
+cd /d "%~dp0.."
 if exist "%LOCALAPPDATA%\Programs\multi-viewer\OmniView.exe" (
     start "" "%LOCALAPPDATA%\Programs\multi-viewer\OmniView.exe" %*
     exit /b

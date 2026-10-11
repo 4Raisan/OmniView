@@ -1,5 +1,6 @@
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
 contextBridge.exposeInMainWorld('desktop', {
+  platform: process.platform,
   showMenu: (name, x, y) => ipcRenderer.send('show-menu', { name, x, y }),
   openFiles: () => ipcRenderer.invoke('pick-files'),
   recentFiles: () => ipcRenderer.invoke('recent-files'),

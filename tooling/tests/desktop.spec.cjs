@@ -5,12 +5,13 @@ const os = require('node:os');
 const JSZip = require('jszip');
 const XLSX = require('xlsx');
 
+const ciArgs = process.env.CI && process.platform === 'linux' ? ['--no-sandbox'] : [];
 let application, page, originalStorage, testProfile;
 test.beforeAll(async () => {
   testProfile = await fs.mkdtemp(path.join(os.tmpdir(), 'multiviewer-test-profile-'));
   application = await electron.launch(process.env.MULTIVIEWER_EXECUTABLE
-    ? { executablePath: process.env.MULTIVIEWER_EXECUTABLE, args: [`--user-data-dir=${testProfile}`] }
-    : { args: [path.join(__dirname, '..', 'electron', 'main.cjs'), `--user-data-dir=${testProfile}`] });
+    ? { executablePath: process.env.MULTIVIEWER_EXECUTABLE, args: [...ciArgs, `--user-data-dir=${testProfile}`] }
+    : { args: [...ciArgs, path.join(__dirname, '..', '..', 'app', 'electron', 'main.cjs'), `--user-data-dir=${testProfile}`] });
   page = await application.firstWindow();
   await page.waitForSelector('#btn-hero-browse');
   originalStorage = await page.evaluate(() => ({ ...localStorage }));
@@ -324,7 +325,7 @@ test('window name and About show viewer version, GitHub and support information'
     dialog.showMessageBox = original;
     return captured;
   });
-  expect(about.message).toBe(`OmniView ${require('../package.json').version}`);
+  expect(about.message).toBe(`OmniView ${require('../../package.json').version}`);
   expect(about.detail).toContain('GitHub');
   expect(about.detail).toContain('https://github.com/4Raisan/OmniView');
   expect(about.detail).toContain('star');
@@ -530,8 +531,8 @@ test('recent files keep 25 real paths and reopen changed files after refresh and
   await expect(page.locator('.file-tab')).toHaveCount(2);
   await application.close();
   application = await electron.launch(process.env.MULTIVIEWER_EXECUTABLE
-    ? { executablePath: process.env.MULTIVIEWER_EXECUTABLE, args: [`--user-data-dir=${testProfile}`] }
-    : { args: [path.join(__dirname, '..', 'electron', 'main.cjs'), `--user-data-dir=${testProfile}`] });
+    ? { executablePath: process.env.MULTIVIEWER_EXECUTABLE, args: [...ciArgs, `--user-data-dir=${testProfile}`] }
+    : { args: [...ciArgs, path.join(__dirname, '..', '..', 'app', 'electron', 'main.cjs'), `--user-data-dir=${testProfile}`] });
   page = await application.firstWindow();
   await expect(page.locator('.recent-file-item')).toHaveCount(25);
   await fs.unlink(targets[24]);
@@ -549,10 +550,48 @@ test('a file passed on startup opens after the renderer is ready', async () => {
   await fs.writeFile(filePath, 'Opened directly from Windows file arguments');
   await application.close();
   application = await electron.launch(process.env.MULTIVIEWER_EXECUTABLE
-    ? { executablePath: process.env.MULTIVIEWER_EXECUTABLE, args: [filePath, `--user-data-dir=${testProfile}`] }
-    : { args: [path.join(__dirname, '..', 'electron', 'main.cjs'), filePath, `--user-data-dir=${testProfile}`] });
+    ? { executablePath: process.env.MULTIVIEWER_EXECUTABLE, args: [...ciArgs, require('node:url').pathToFileURL(filePath).href, `--user-data-dir=${testProfile}`] }
+    : { args: [...ciArgs, path.join(__dirname, '..', '..', 'app', 'electron', 'main.cjs'), require('node:url').pathToFileURL(filePath).href, `--user-data-dir=${testProfile}`] });
   page = await application.firstWindow();
   await expect(page.locator('#status-filename')).toHaveText('multi viewer startup check.txt');
   await expect(page.locator('.code-block')).toContainText('Opened directly from Windows file arguments');
   await fs.unlink(filePath);
+});
+
+test('native file-open event delivers a document to the existing window', async () => {
+  const target = path.join(os.tmpdir(), `omniview-os-open-${Date.now()}.txt`);
+  await fs.writeFile(target, 'Opened through the OS file event');
+  try {
+    await application.evaluate(({app}, target) => app.emit('open-file', { preventDefault() {} }, target), target);
+    await expect(page.locator('.code-block')).toContainText('Opened through the OS file event');
+  } finally { await fs.unlink(target); }
+});
+
+test('Linux keeps filenames with different case as separate documents', async () => {
+  test.skip(process.platform !== 'linux', 'Case-sensitive Linux filesystem check');
+  const folder = await fs.mkdtemp(path.join(os.tmpdir(), 'omniview-case-'));
+  const upper = path.join(folder, 'Notes.txt'), lower = path.join(folder, 'notes.txt');
+  await fs.writeFile(upper, 'Uppercase document');
+  await fs.writeFile(lower, 'Lowercase document');
+  try {
+    await application.evaluate(({dialog}, files) => { dialog.showOpenDialog = async () => ({canceled:false,filePaths:files}); }, [upper, lower]);
+    await page.locator('#btn-open-file').click();
+    await expect(page.locator('.file-tab[data-full-name="Notes.txt"]')).toHaveCount(1);
+    await expect(page.locator('.file-tab[data-full-name="notes.txt"]')).toHaveCount(1);
+    await page.locator('.file-tab[data-full-name="Notes.txt"]').click();
+    await expect(page.locator('.code-block')).toContainText('Uppercase document');
+    await page.locator('.file-tab[data-full-name="notes.txt"]').click();
+    await expect(page.locator('.code-block')).toContainText('Lowercase document');
+  } finally { await fs.rm(folder, {recursive:true,force:true}); }
+});
+
+test('Mac Dock activation recreates the window after closing it', async () => {
+  test.skip(process.platform !== 'darwin', 'Mac application lifecycle check');
+  await application.evaluate(({BrowserWindow}) => { const win=BrowserWindow.getAllWindows()[0]; win.allowEditedClose=true; win.close(); });
+  await expect.poll(() => application.evaluate(({BrowserWindow}) => BrowserWindow.getAllWindows().length)).toBe(0);
+  await application.evaluate(({app}) => app.emit('activate'));
+  page = await application.firstWindow();
+  await expect(page.locator('#btn-hero-browse')).toBeVisible();
+  await open('reopened.txt', 'Window reopened with the same desktop API', 'text/plain');
+  await expect(page.locator('.code-block')).toContainText('Window reopened with the same desktop API');
 });

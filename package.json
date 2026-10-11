@@ -1,19 +1,21 @@
 {
   "name": "multi-viewer",
-  "version": "1.7.0",
-  "description": "OmniView \u2014 Any File. One Viewer. Offline desktop file viewer",
+  "version": "1.8.0",
+  "description": "OmniView — Any File. One Viewer. Offline desktop file viewer",
   "type": "module",
-  "main": "electron/main.cjs",
+  "main": "app/electron/main.cjs",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build && node scripts/copy-pdf-assets.mjs",
-    "preview": "vite preview",
+    "dev": "vite --config tooling/vite.config.js",
+    "build": "vite build --config tooling/vite.config.js && node tooling/scripts/copy-pdf-assets.mjs",
+    "preview": "vite preview --config tooling/vite.config.js",
     "start": "electron .",
     "desktop": "npm run build && electron .",
-    "package": "npm run build && electron-builder --win nsis --x64",
-    "test": "playwright test",
+    "package": "npm run build && electron-builder --win nsis --x64 --publish never",
+    "test": "playwright test --config tooling/playwright.config.cjs",
     "package:installer": "npm run package",
-    "package:portable": "npm run build && electron-builder --win portable --x64"
+    "package:portable": "npm run build && electron-builder --win portable --x64 --publish never",
+    "package:linux": "npm run build && electron-builder --linux AppImage deb --x64 --publish never",
+    "package:mac": "npm run build && electron-builder --mac dmg --publish never"
   },
   "keywords": [
     "viewer",
@@ -34,7 +36,7 @@
     "jszip": "^3.10.2",
     "marked": "^18.1.0",
     "pdfjs-dist": "^6.4.299",
-    "xlsx": "file:vendor/xlsx-0.20.3.tgz"
+    "xlsx": "file:tooling/vendor/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.0",
@@ -50,10 +52,10 @@
       "output": "release"
     },
     "files": [
-      "dist/**/*",
-      "electron/**/*",
+      "app/dist/**/*",
+      "app/electron/**/*",
+      "app/resources/**/*",
       "package.json",
-      "resources/**/*",
       "!node_modules/**/*"
     ],
     "asar": true,
@@ -63,7 +65,7 @@
       ],
       "artifactName": "OmniView-Portable-${version}-${arch}.${ext}",
       "signAndEditExecutable": true,
-      "icon": "resources/app-icon.ico",
+      "icon": "app/resources/app-icon.ico",
       "signExecutable": false
     },
     "portable": {
@@ -74,17 +76,56 @@
       "perMachine": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "include": "resources/installer.nsh",
+      "include": "app/resources/installer.nsh",
       "artifactName": "OmniView-Setup-${version}-${arch}.${ext}",
       "deleteAppDataOnUninstall": false
     },
     "electronLanguages": [
       "en-US"
-    ]
+    ],
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.productivity",
+      "icon": "app/resources/app-icon-mac.png",
+      "artifactName": "OmniView-${version}-mac-${arch}.${ext}",
+      "identity": null,
+      "fileAssociations": [
+        {
+          "ext": "pdf",
+          "name": "PDF document",
+          "role": "Viewer",
+          "rank": "Alternate"
+        }
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Office",
+      "icon": "app/resources/app-icon.png",
+      "artifactName": "OmniView-${version}-linux-${arch}.${ext}",
+      "mimeTypes": [
+        "application/pdf"
+      ],
+      "desktop": {
+        "entry": {
+          "Name": "OmniView",
+          "Comment": "Any File. One Viewer.",
+          "StartupWMClass": "OmniView"
+        }
+      },
+      "executableName": "OmniView",
+      "syncDesktopName": true
+    }
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/4Raisan/OmniView.git"
   },
-  "homepage": "https://github.com/4Raisan/OmniView"
+  "homepage": "https://github.com/4Raisan/OmniView",
+  "desktopName": "OmniView"
 }

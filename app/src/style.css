@@ -1413,3 +1413,5 @@ mark.md-match { background: var(--accent-light); color: var(--text-primary); out
 .window-menus button:hover, .window-menus button:focus-visible { background: #34343a; outline: none; }
 .window-tagline { margin-left: auto; color: #a1a1aa; font-size: 12px; }
 @media (max-width: 900px) { .window-tagline { display: none; } }
+
+.platform-darwin .window-titlebar { padding-left: 88px; padding-right: 12px; }

@@ -4,35 +4,92 @@ on:
 permissions:
   contents: write
 jobs:
-  release:
-    runs-on: windows-latest
-    timeout-minutes: 20
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+            arch: x64
+            build: --win nsis portable --x64
+            executable: release/win-unpacked/OmniView.exe
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+            build: --linux AppImage deb --x64
+            executable: release/linux-unpacked/OmniView
+          - os: macos-14
+            platform: mac
+            arch: arm64
+            build: --mac dmg --arm64
+            executable: release/mac-arm64/OmniView.app/Contents/MacOS/OmniView
+          - os: macos-15-intel
+            platform: mac
+            arch: x64
+            build: --mac dmg --x64
+            executable: release/mac/OmniView.app/Contents/MacOS/OmniView
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+      - name: Linux desktop libraries
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgtk-3-0 libnss3 libgbm1 libasound2t64
       - run: npm ci
       - run: npm run build
-      - run: npx electron-builder --win nsis portable --x64 --publish never
+      - run: npx electron-builder ${{ matrix.build }} --publish never
       - name: Check packaged desktop app
+        if: runner.os != 'Linux'
         run: npm test
         env:
-          MULTIVIEWER_EXECUTABLE: ${{ github.workspace }}\release\win-unpacked\OmniView.exe
-      - name: Upload verified downloads to draft release
-        shell: pwsh
+          MULTIVIEWER_EXECUTABLE: ${{ github.workspace }}/${{ matrix.executable }}
+      - name: Check packaged Linux app
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm test
+        env:
+          MULTIVIEWER_EXECUTABLE: ${{ github.workspace }}/${{ matrix.executable }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: downloads-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            release/*.exe
+            release/*.AppImage
+            release/*.deb
+            release/*.dmg
+          if-no-files-found: error
+  upload:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: downloads-*
+          path: release
+          merge-multiple: true
+      - name: Upload checked downloads to a new draft
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+        shell: bash
         run: |
-          $version=(Get-Content package.json -Raw | ConvertFrom-Json).version
-          $tag="v$version"
-          gh release edit $tag --target $env:GITHUB_SHA
-          if ($LASTEXITCODE -ne 0) { throw 'Draft release update failed' }
-          $setup="release/OmniView-Setup-$version-x64.exe"
-          $portable="release/OmniView-Portable-$version-x64.exe"
-          gh release upload $tag $setup $portable --clobber
-          if ($LASTEXITCODE -ne 0) { throw 'Release upload failed' }
-          Get-FileHash -LiteralPath $setup,$portable -Algorithm SHA256 | Format-Table
-
+          tag="v$(node -p "require('./package.json').version")"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            draft=$(gh release view "$tag" --json isDraft --jq .isDraft)
+            if [ "$draft" != 'true' ]; then
+              echo 'Refusing to replace a published release. Bump the version first.'
+              exit 1
+            fi
+          else
+            gh release create "$tag" --draft --target "$GITHUB_SHA" --title "OmniView ${tag#v}" --notes 'Windows, Linux and macOS downloads. Packaged desktop checks passed on every target. Builds are unsigned; macOS builds are not notarized.'
+          fi
+          gh release edit "$tag" --target "$GITHUB_SHA"
+          (cd release && sha256sum *.exe *.AppImage *.deb *.dmg > SHA256SUMS.txt)
+          gh release upload "$tag" release/* --clobber

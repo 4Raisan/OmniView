@@ -1,6 +1,6 @@
 <p align="center"><img src="docs/assets/logo.svg" alt="OmniView — Any File. One Viewer." width="440"></p>
 
-A Windows desktop app for viewing local files in one tabbed workspace. Documents stay on your computer; viewing works offline.
+A desktop app for Windows, Linux and macOS for viewing local files in one tabbed workspace. Documents stay on your computer; viewing works offline.
 
 ## Download
 
@@ -21,7 +21,7 @@ To use OmniView for PDF double-clicks, choose it in Windows **Open with → Alwa
 
 Media playback depends on codec support. DOC/RTF need conversion to DOCX; spreadsheet formulas display saved values.
 
-**Shortcuts:** Ctrl+O open · Ctrl+W close tab · Ctrl+B sidebar · Ctrl+P print · F11 fullscreen.
+**Shortcuts:** use Cmd on Mac, Ctrl elsewhere. Ctrl+O open · Ctrl+W close tab · Ctrl+B sidebar · Ctrl+P print · F11 fullscreen.
 
 ## How it works
 
@@ -29,7 +29,7 @@ Media playback depends on codec support. DOC/RTF need conversion to DOCX; spread
 
 ## Build from source
 
-Use Windows and Node.js 22.12 or newer.
+Use Node.js 22.12 or newer.
 
 ```sh
 npm ci
@@ -37,7 +37,7 @@ npm run build
 npm start
 ```
 
-`npm run package` builds the installer; `npm run package:portable` builds the portable app.
+`npm run package` builds Windows; `npm run package:linux` builds Linux; `npm run package:mac` builds on macOS.
 
 [Detailed guide](docs/DEVELOPMENT.md) · [Editing](docs/EDITING.md) · [Measured performance](docs/PERFORMANCE.md)
 

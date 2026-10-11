@@ -1,6 +1,6 @@
 import hljs from 'highlight.js/lib/core';
 
-const grammars = import.meta.glob(['/node_modules/highlight.js/es/languages/*.js', '!/node_modules/highlight.js/es/languages/*.js.js'], {
+const grammars = import.meta.glob(['../../../node_modules/highlight.js/es/languages/*.js', '!../../../node_modules/highlight.js/es/languages/*.js.js'], {
   import: 'default'
 });
 const aliases = {
@@ -16,7 +16,7 @@ export async function loadCodeLanguage(extension) {
   const language = aliases[extension] || extension;
   if (!language) return null;
   if (!hljs.getLanguage(language)) {
-    const load = grammars[`/node_modules/highlight.js/es/languages/${language}.js`];
+    const load = grammars[`../../../node_modules/highlight.js/es/languages/${language}.js`];
     if (!load) return null;
     hljs.registerLanguage(language, await load());
   }
@@ -24,3 +24,4 @@ export async function loadCodeLanguage(extension) {
 }
 
 export { hljs };
+
