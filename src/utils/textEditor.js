@@ -29,16 +29,52 @@ export class TextEditor {
     edit.onclick = () => this.toggle(); group.append(edit);
     if (this.editing && this.viewer.renderLivePreview) {
       const split = document.createElement('button'); split.className = 'btn-text'; split.textContent = this.liveSplit ? 'Text only' : 'Live split';
-      split.onclick = () => { this.liveSplit = !this.liveSplit;   }; 
+      split.onclick = () => { this.liveSplit = !this.liveSplit; this.renderEditing(); this.renderButtons(); }; group.append(split);
+      if (this.liveSplit && this.area.value.length > 128 * 1024) {
+        const refresh = document.createElement('button'); refresh.className = 'btn-text'; refresh.textContent = 'Refresh preview';
+        refresh.title = 'Large Markdown uses manual preview to keep typing responsive'; refresh.onclick = () => this.updatePreview(); group.append(refresh);
+      }
+    }
+    for (const saveAs of [false, true]) {
+      const button = document.createElement('button'); button.className = 'btn-text';
+      button.textContent = saveAs ? 'Save As' : 'Save';
+      button.disabled = !this.meta.eligible || this.saving;
+      button.onclick = () => this.save(saveAs); group.append(button);
+    }
+    const state = document.createElement('span'); state.className = 'edit-state';
+    state.textContent = this.dirty ? 'Unsaved' : ''; group.append(state);
+    if (this.error) {
+      const error = document.createElement('span'); error.className = 'edit-error';
+      error.setAttribute('role', 'status'); error.textContent = this.error; error.title = this.error; group.append(error);
+    }
+    toolbar.append(group);
+  }
+  async toggle() {
+    if (this.editing) {
+      clearTimeout(this.previewTimer);
+      const text = this.area.value;
+      this.area = null;
+      this.editing = false;
+      this.viewer.highlightedLines = null;
+      await this.viewer.render(text, this.viewer.filename);
+    } else {
+      this.viewer.lineElements = null;
+      this.viewer.lowercaseLines = null;
+      this.viewer.highlightedLines = null;
+      this.area = document.createElement('textarea');
+       
+       
+      
+      
+      
+      
+      
+      
+      
       
     }
     
-     
-     
-    
-    
   }
-  
   
   
   

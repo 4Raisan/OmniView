@@ -486,25 +486,63 @@ class OmniViewApp {
       if ([FILE_TYPES.CODE, FILE_TYPES.MARKDOWN].includes(tab.type) && window.desktop) {
         new TextEditor(tab.viewer, tab.editMeta || { eligible: new TextEncoder().encode(tab.viewer.rawText).byteLength <= 2 * 1024 * 1024, bom: false, lineEnding: '\n' }, result => {
           if (tab.closed) { window.desktop.releaseEditFile(result.token); return; }
-           
-          
-          
-          
+          tab.name = result.name; tab.filePath = result.path;
+          this.renderTabsList();
+          if (this.activeTabId === tab.id) { this.updateStatus(tab); this.updateSidebarDetails(tab); }
+          this.renderRecentFiles();
         }, dirty => {
-          
-          
-          
+          const title = this.tabsContainer.querySelector(`[data-tab-id="${tab.id}"] .tab-title`);
+          const limit = this.tabsContainer.classList.contains('compact-tabs') ? 10 : 20;
+          if (title) title.textContent = `${dirty ? '● ' : ''}${tab.name.slice(0, limit)}${tab.name.length > limit ? '…' : ''}`;
         });
       }
       // Parsed viewers own their state; do not keep an extra original file buffer.
-      
-      
+      if ([FILE_TYPES.EXCEL, FILE_TYPES.WORD, FILE_TYPES.CODE, FILE_TYPES.MARKDOWN].includes(tab.type)) tab.data = null;
+      if (tab.closed) tab.viewer.destroy?.();
+      else if (this.activeTabId !== tab.id) tab.viewer.suspend?.();
     } catch (error) {
-      
+      tab.surface.innerHTML = `<div class="viewer-error"><h3>Could not open file</h3><p>${escapeHtml(error.message)}</p></div>`;
     }
   }
 
-  
+  renderWelcomeScreen() {
+    this.contextToolbar.innerHTML = '';
+    this.viewerCanvas.innerHTML = `
+      <div class="empty-state-container">
+        <div class="drop-hero-box" id="hero-dropzone">
+          <div class="hero-icon-circle">${icons.upload}</div>
+          <h2 class="hero-title">Any File. One Viewer.</h2>
+          <p class="hero-subtitle">
+            Drag and drop any file here, or click Browse to view spreadsheets, documents, PDFs, code, or images instantly.
+          </p>
+          <button class="btn-primary" id="btn-hero-browse">
+            ${icons.upload} Browse Files
+          </button>
+          <div class="supported-formats-pills">
+            <span class="format-pill">.xlsx</span>
+            <span class="format-pill">.csv</span>
+            <span class="format-pill">.docx</span>
+            <span class="format-pill">.pdf</span>
+            <span class="format-pill">.md</span>
+            <span class="format-pill">.json</span>
+            <span class="format-pill">.py</span>
+            <span class="format-pill">.js</span>
+            <span class="format-pill">.png</span>
+            <span class="format-pill">.zip</span>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('btn-hero-browse')?.addEventListener('click', () => {
+      this.openFilePicker();
+    });
+
+    document.getElementById('hero-dropzone')?.addEventListener('click', (e) => {
+      if (e.target.closest('#btn-hero-browse')) return;
+      this.openFilePicker();
+    });
+  }
 
   
 

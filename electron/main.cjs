@@ -184,19 +184,33 @@ else {
       const temporary = path.join(path.dirname(target), `.${path.basename(target)}.${randomUUID()}.tmp`);
       try {
         await fs.writeFile(temporary, bytes, { flag: 'wx' });
-        
-      } finally {  }
-      
-      
-      
-      
-      
+        for (let attempt = 0; ; attempt++) {
+          if (original && target.toLowerCase() === original.path.toLowerCase() && digest(await fs.readFile(target)) !== original.hash) {
+            throw new Error('This file changed outside OmniView. Use a different Save As name.');
+          }
+          try { await fs.rename(temporary, target); break; }
+          catch (error) {
+            if (!['EPERM', 'EBUSY', 'EACCES'].includes(error.code) || attempt >= 5) throw error;
+            await new Promise(resolve => setTimeout(resolve, 50 * 2 ** attempt));
+          }
+        }
+      } finally { await fs.unlink(temporary).catch(() => {}); }
+      const nextToken = token || randomUUID();
+      editFiles.set(nextToken, { path: target, hash: digest(bytes) });
+      const existing = recentFiles.find(item => item.path.toLowerCase() === target.toLowerCase());
+      recentFiles = [{ id: existing?.id || randomUUID(), path: target, name: path.basename(target), size: bytes.byteLength }, ...recentFiles.filter(item => item.path.toLowerCase() !== target.toLowerCase())].slice(0, 25);
+      await saveHistory().catch(() => {});
+      return { token: nextToken, path: target, name: path.basename(target) };
+    });
+    ipcMain.handle('confirm-edit-close', async (_event, name) => (await dialog.showMessageBox(mainWindow, {
+      type: 'question', buttons: ['Save', 'Discard', 'Cancel'], defaultId: 0, cancelId: 2,
+      message: `Save changes to ${path.basename(name)}?`
+    })).response);
+    ipcMain.on('release-edit-file', (_event, token) => editFiles.delete(token));
+    ipcMain.on('release-media', (_event, token) => releaseMedia(token));
+    mainWindow.on('close', event => {
       
     });
-    
-    
-    
-    
     
     
     
