@@ -1256,3 +1256,19 @@ body {
 .context-toolbar > div { width: 100%; }
 .recent-file-item { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent-color, #3b82f6); outline-offset: 2px; }
+@media print {
+  .app-header, .app-sidebar, .context-toolbar, .app-statusbar, .drop-overlay, .toast-notification, .code-copy-btn { display: none !important; }
+  html, body, .app-body, .app-main, .viewer-canvas, .document-surface { display: block !important; height: auto !important; overflow: visible !important; background: white !important; color: black !important; }
+  .word-canvas-scale { transform: none !important; }
+  .word-viewer-wrapper, .markdown-rendered-view { padding: 0 !important; }
+  .docx-wrapper { background: white !important; padding: 0 !important; }
+  .docx-wrapper > section { box-shadow: none !important; margin: 0 !important; }
+}
+@media (max-width: 950px) {
+  .brand-badge, .statusbar-right > span:last-child { display: none; }
+  .header-left { gap: 8px; }
+  .app-sidebar { width: var(--sidebar-width); min-width: 0; }
+  .app-sidebar.collapsed { width: 0; min-width: 0; }
+}
+
+.pdf-print-pages { display: none; }
