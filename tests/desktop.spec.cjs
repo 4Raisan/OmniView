@@ -160,20 +160,213 @@ test('spreadsheet keeps late columns, filters and exports', async () => {
   await expect.poll(async () => (await fs.readFile(target, 'utf8').catch(() => '')).includes('late column')).toBe(true);
   await fs.unlink(target);
 });
+test('Markdown and filenames cannot execute scripts', async () => {
+  await open('unsafe.md', '# Safe heading\n<img src=x onerror="window.compromised=true">\n<script>window.compromised=true</script>\n[bad](javascript:alert(1))', 'text/markdown');
+  await expect(page.locator('.markdown-body h1')).toHaveText('Safe heading');
+  expect(await page.evaluate(() => window.compromised)).toBeUndefined();
+  expect(await page.locator('.markdown-body [onerror], .markdown-body script, .markdown-body a[href^="javascript:"]').count()).toBe(0);
+  await open('<img src=x onerror=alert(1)>.txt', 'literal filename', 'text/plain');
+  await expect(page.locator('.tab-title').last()).toHaveAttribute('title', '<img src=x onerror=alert(1)>.txt');
+  await expect(page.locator('.tab-title img')).toHaveCount(0);
+});
+test('ZIP nested images and text open with correct types', async () => {
+  const zip = new JSZip();
+  zip.file('inside.txt', 'nested text works');
+  zip.file('picture.png', Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j2ioAAAAASUVORK5CYII=', 'base64'));
+  await open('nested.zip', await zip.generateAsync({ type: 'nodebuffer' }));
+  await page.locator('.zip-table tr').filter({ hasText: 'inside.txt' }).getByText('View', { exact: true }).click();
+  await expect(page.locator('.code-block')).toContainText('nested text works');
+  await page.locator('.file-tab[data-full-name="nested.zip"]').click();
+  await page.locator('.zip-table tr').filter({ hasText: 'picture.png' }).getByText('View', { exact: true }).click();
+  await expect(page.locator('.image-toolbar .toolbar-badge')).toHaveText('1 × 1 px');
+});
+test('DOCX opens and rapid tab switching does not mix viewers', async () => {
+  const zip = new JSZip();
+  zip.file('[Content_Types].xml', '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
+  zip.file('_rels/.rels', '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
+  zip.file('word/document.xml', '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Desktop Word document</w:t></w:r></w:p><w:sectPr/></w:body></w:document>');
+  await open('letter.docx', await zip.generateAsync({ type: 'nodebuffer' }));
+  await open('foreground.txt', 'foreground remains visible', 'text/plain');
+  await expect(page.locator('.code-block')).toContainText('foreground remains visible');
+  await page.locator('.file-tab[data-full-name="letter.docx"]').click();
+  await expect(page.locator('.word-content-container')).toContainText('Desktop Word document');
+});
+test('PDF navigation, original download and tab return', async () => {
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 300] /Contents 4 0 R >>',
+    '<< /Length 0 >>\nstream\n\nendstream',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 300] /Contents 6 0 R >>',
+    '<< /Length 0 >>\nstream\n\nendstream'
+  ];
+  let pdf = '%PDF-1.4\n', offsets = [0];
+  objects.forEach((obj, i) => { offsets.push(Buffer.byteLength(pdf)); pdf += `${i + 1} 0 obj\n${obj}\nendobj\n`; });
+  const xref = Buffer.byteLength(pdf);
+  pdf += `xref\n0 7\n0000000000 65535 f \n${offsets.slice(1).map(n => `${String(n).padStart(10, '0')} 00000 n \n`).join('')}trailer\n<< /Size 7 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  await open('pages.pdf', pdf, 'application/pdf');
+  await expect(page.locator('#pdf-canvas')).toBeVisible();
+  await expect(page.locator('.pdf-page')).toHaveCount(2);
+  const navBounds = await page.locator('.toolbar-nav-group').boundingBox();
+  const previousBounds = await page.locator('#pdf-prev').boundingBox();
+  const nextBounds = await page.locator('#pdf-next').boundingBox();
+  expect(Math.abs(previousBounds.y - nextBounds.y)).toBeLessThan(1);
+  expect(nextBounds.y + nextBounds.height).toBeLessThanOrEqual(navBounds.y + navBounds.height + 1);
+  await expect(page.getByTitle('Previous page')).toBeDisabled();
+  await page.getByTitle('Next page').click();
+  await expect(page.locator('#pdf-page-input')).toHaveValue('2');
+  await expect(page.getByTitle('Next page')).toBeDisabled();
+  await page.locator('.pdf-viewer-wrapper').evaluate(el => { el.scrollTop = 0; });
+  await expect(page.locator('#pdf-page-input')).toHaveValue('1');
+  await page.locator('.pdf-viewer-wrapper').evaluate(el => { el.scrollTop = el.scrollHeight; });
+  await expect(page.locator('#pdf-page-input')).toHaveValue('2');
+  await page.getByText('Fit Width', { exact: true }).click();
+  expect(await page.locator('.pdf-viewer-wrapper').evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+  await page.getByTitle('Zoom in', { exact: true }).click();
+  await expect(page.locator('.pdf-page.rendered')).toHaveCount(2);
+  await page.getByTitle('Previous page').click();
+  await expect(page.locator('#pdf-page-input')).toHaveValue('1');
+  await page.getByTitle('Next page').click();
+  const target = path.join(os.tmpdir(), 'multiviewer-test-export.pdf');
+  await application.evaluate(({ dialog }, target) => { dialog.showSaveDialog = async () => ({ canceled: false, filePath: target }); }, target);
+  await page.getByTitle('Download PDF').click();
+  await expect.poll(async () => (await fs.readFile(target).catch(() => Buffer.from(''))).toString()).toBe(pdf);
+  await fs.unlink(target);
+  const pdfCanvases = await page.locator('.pdf-page-canvas').elementHandles();
+  await open('pdf-other.txt', 'switch away', 'text/plain');
+  for (const canvas of pdfCanvases) {
+    await expect.poll(() => canvas.evaluate(el => el.width * el.height)).toBe(0);
+  }
+  await page.locator('.file-tab[data-full-name="pages.pdf"]').click();
+  await expect(page.locator('#pdf-page-input')).toHaveValue('2');
+  await expect(page.locator('.pdf-page.rendered')).toHaveCount(2);
+  await application.evaluate(({ BrowserWindow }) => {
+    const win = BrowserWindow.getAllWindows()[0];
+    win.webContents.print = async (_options, callback) => {
+      global.printedPages = await win.webContents.executeJavaScript("document.querySelectorAll('.pdf-print-pages img').length");
+      callback(true);
+    };
+  });
+  await page.getByTitle('Print PDF').click();
+  await expect.poll(() => application.evaluate(() => global.printedPages)).toBe(2);
+});
+test('code search reuses its view, preserves syntax and clears matches', async () => {
+  await open('search.py', 'def calculation(value):\n    return value + 10', 'text/plain');
+  const firstLine = await page.locator('.code-line').first().elementHandle();
+  await expect(page.locator('.hljs-keyword').first()).toHaveText('def');
+  const input = page.locator('.toolbar-search input');
+  await input.fill('value');
+  await expect(page.locator('.code-line.has-match')).toHaveCount(2);
+  await expect(page.locator('mark.search-match')).toHaveCount(2);
+  expect(await firstLine.evaluate(el => el.isConnected)).toBe(true);
+  await input.fill('calculation');
+  await expect(page.locator('.code-line.has-match')).toHaveCount(1);
+  await input.fill('');
+  await expect(page.locator('mark.search-match')).toHaveCount(0);
+  await expect(page.locator('.hljs-keyword').first()).toHaveText('def');
+  await open('fenced.md', '```py\ndef example():\n    return 1\n```', 'text/markdown');
+  await expect(page.locator('.markdown-body .hljs-keyword').first()).toHaveText('def');
+});
 
+test('oversized PDF pages keep screen canvases within the memory budget', async () => {
+  const objects = ['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 6000 6000] /Contents 4 0 R >>', '<< /Length 0 >>\nstream\n\nendstream'];
+  let pdf = '%PDF-1.4\n', offsets = [0];
+  objects.forEach((obj, i) => { offsets.push(Buffer.byteLength(pdf)); pdf += `${i + 1} 0 obj\n${obj}\nendobj\n`; });
+  const xref = Buffer.byteLength(pdf);
+  pdf += `xref\n0 5\n0000000000 65535 f \n${offsets.slice(1).map(n => `${String(n).padStart(10, '0')} 00000 n \n`).join('')}trailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  await open('large-page.pdf', pdf, 'application/pdf');
+  await expect(page.locator('.pdf-page.rendered')).toHaveCount(1);
+  const pixels = await page.locator('.pdf-page-canvas').evaluate(canvas => canvas.width * canvas.height);
+  expect(pixels).toBeGreaterThan(0);
+  expect(pixels).toBeLessThanOrEqual(8_000_000);
+  await page.keyboard.press('Control+w');
+});
 
+test('Python lines are compact and indentation is preserved', async () => {
+  await open('spacing.py', 'def example():\n    value = 42\n    return value\n\nexample()', 'text/plain');
+  const rows = page.locator('.code-line');
+  await expect(rows).toHaveCount(5);
+  const first = await rows.nth(0).boundingBox();
+  const second = await rows.nth(1).boundingBox();
+  expect(second.y - first.y).toBeLessThan(25);
+  expect(second.y - first.y).toBeGreaterThan(15);
+  await expect(page.locator('.line-code').nth(1)).toHaveText('    value = 42', { useInnerText: false });
+});
+test('left panel can be dragged, resized with keyboard and its width persists', async () => {
+  await application.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setSize(1280,850));
+  if (await page.locator('#app-sidebar').evaluate(el => el.classList.contains('collapsed'))) {
+    await page.locator('#btn-toggle-sidebar').click();
+  }
+  const handle = page.locator('#sidebar-resize-handle');
+  await expect.poll(async () => Math.round((await page.locator('#app-sidebar').boundingBox()).width)).toBe(Number(await handle.getAttribute('aria-valuenow')));
+  const bounds = await page.locator('#app-sidebar').boundingBox();
+  await page.mouse.move(bounds.x + bounds.width, bounds.y + 180);
+  await page.mouse.down();
+  await page.mouse.move(bounds.x + 360, bounds.y + 180, { steps: 10 });
+  await page.mouse.up();
+  await expect.poll(async () => Math.round((await page.locator('#app-sidebar').boundingBox()).width)).toBe(360);
+  await handle.focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect(handle).toHaveAttribute('aria-valuenow', '340');
+  await page.reload();
+  await page.waitForSelector('#btn-hero-browse');
+  await expect.poll(async () => Math.round((await page.locator('#app-sidebar').boundingBox()).width)).toBe(340);
+});
+test('window name and About show viewer version, GitHub and support information', async () => {
+  expect(await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getTitle())).toBe('OmniView');
+  const about = await application.evaluate(async ({ Menu, dialog }) => {
+    let captured;
+    const original = dialog.showMessageBox;
+    dialog.showMessageBox = async (_window, options) => { captured = options; return { response: 0 }; };
+    const help = Menu.getApplicationMenu().items.find(item => item.label === 'Help');
+    help.submenu.items[0].click();
+    dialog.showMessageBox = original;
+    return captured;
+  });
+  expect(about.message).toBe(`OmniView ${require('../package.json').version}`);
+  expect(about.detail).toContain('GitHub');
+  expect(about.detail).toContain('https://github.com/4Raisan/OmniView');
+  expect(about.detail).toContain('star');
+  const links = await application.evaluate(({Menu,shell}) => {
+    const captured=[]; const original=shell.openExternal;
+    shell.openExternal=async url=>{captured.push(url);};
+    try {
+      const help=Menu.getApplicationMenu().items.find(item=>item.label==='Help');
+      help.submenu.items[1].click(); help.submenu.items[2].click();
+      return captured;
+    } finally { shell.openExternal=original; }
+  });
+  expect(links).toEqual(['https://github.com/4Raisan/OmniView','https://github.com/4Raisan/OmniView/discussions/5']);
+});
+test('native file events, theme, close and error recovery', async () => {
+  await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.send('open-file', { name: 'native.txt', bytes: Buffer.from('native open works') }));
+  await expect(page.locator('.code-block')).toContainText('native open works');
+  const previousTheme = await page.locator('html').getAttribute('data-theme');
+  await page.locator('#btn-toggle-theme').click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', previousTheme === 'dark' ? 'light' : 'dark');
+  await open('broken.pdf', 'not a PDF', 'application/pdf');
+  await expect(page.locator('.viewer-error')).toContainText('Failed to open PDF');
+  await page.keyboard.press('Control+w');
+  await expect(page.locator('#status-filename')).toHaveText('native.txt');
+});
 
-
-
-
-
-
-
-
-
-
-
-
+test('five additional dark themes are distinct, selectable and remembered', async () => {
+  await expect(page.locator('.app-brand')).toHaveCount(0);
+  const colors = new Set();
+  for (const theme of ['dark', 'midnight', 'graphite', 'forest', 'violet', 'ember']) {
+    
+    
+    
+  }
+  
+  
+  
+  
+  
+  
+  
+});
 
 
 
