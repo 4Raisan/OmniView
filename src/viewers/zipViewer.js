@@ -79,11 +79,98 @@ export class ZipViewer {
     };
 
     const clearBtn = searchWrapper.querySelector('.search-clear-btn');
-    
-    
+    if (clearBtn) {
+      clearBtn.onclick = () => {
+        this.searchQuery = '';
+        this.renderToolbar();
+        this.renderList();
+      };
+    }
+    toolbar.appendChild(searchWrapper);
 
-    
+    this.toolbarContainer.appendChild(toolbar);
   }
 
-  
+  renderList() {
+    this.container.innerHTML = '';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'zip-viewer-container';
+
+    let filtered = this.entries;
+    if (this.searchQuery.trim()) {
+      const q = this.searchQuery.toLowerCase();
+      filtered = this.entries.filter(e => e.path.toLowerCase().includes(q));
+    }
+
+    if (!filtered.length) {
+      wrapper.innerHTML = `<div class="empty-sheet-msg"><p>No files match "${escapeHtml(this.searchQuery)}"</p></div>`;
+      this.container.appendChild(wrapper);
+      return;
+    }
+
+    const table = document.createElement('table');
+    table.className = 'zip-table';
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Size</th>
+          <th>Date</th>
+          <th style="text-align: right;">Action</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    `;
+
+    const tbody = table.querySelector('tbody');
+    filtered.forEach(item => {
+      const tr = document.createElement('tr');
+      const fileType = detectFileType(item.name);
+      const icon = item.dir ? icons.fileArchive : getFileTypeIcon(fileType);
+
+      tr.innerHTML = `
+        <td class="zip-name-col">
+          <span class="zip-entry-icon">${icon}</span>
+          <span class="zip-entry-path ${item.dir ? 'is-dir' : ''}">${escapeHtml(item.path)}</span>
+        </td>
+        <td class="zip-size-col">${item.dir ? '—' : formatFileSize(item.size)}</td>
+        <td class="zip-date-col">${item.date ? new Date(item.date).toLocaleDateString() : '—'}</td>
+        <td class="zip-actions-col">
+          ${!item.dir ? `
+            <button class="btn-text btn-preview" title="Preview inside app">View</button>
+            <button class="btn-icon btn-download" title="Extract and download">${icons.download}</button>
+          ` : ''}
+        </td>
+      `;
+
+      if (!item.dir) {
+        const previewBtn = tr.querySelector('.btn-preview');
+        if (previewBtn) {
+          previewBtn.onclick = async () => {
+            const buf = await item.entry.async('arraybuffer');
+            if (this.onOpenFileCallback) {
+              this.onOpenFileCallback({
+                name: item.name,
+                buffer: buf,
+                size: item.size
+              });
+            }
+          };
+        }
+
+        const downloadBtn = tr.querySelector('.btn-download');
+        if (downloadBtn) {
+          downloadBtn.onclick = async () => {
+            const blob = await item.entry.async('blob');
+            downloadBlob(blob, item.name);
+          };
+        }
+      }
+
+      tbody.appendChild(tr);
+    });
+
+    wrapper.appendChild(table);
+    this.container.appendChild(wrapper);
+  }
 }

@@ -442,14 +442,40 @@ class OmniViewApp {
   }
 
   fitTabs() {
+    const tabs = [...this.tabsContainer.children];
+    this.tabsContainer.classList.remove('compact-tabs');
+    for (const tab of tabs) {
+      tab.style.width = '';
+      const name = tab.dataset.fullName;
+      const dirty = this.tabs.find(item => item.id === tab.dataset.tabId)?.viewer?.editor?.dirty;
+      tab.querySelector('.tab-title').textContent = `${dirty ? '● ' : ''}${name.length > 20 ? name.slice(0, 20) + '…' : name}`;
+      tab.dataset.normalWidth = Math.ceil(tab.getBoundingClientRect().width);
+    }
+    if (tabs.reduce((sum, tab) => sum + Number(tab.dataset.normalWidth) + 4, 0) > this.tabsContainer.clientWidth) {
+      this.tabsContainer.classList.add('compact-tabs');
+      for (const tab of tabs) {
+        tab.style.width = '';
+        const name = tab.dataset.fullName;
+        const dirty = this.tabs.find(item => item.id === tab.dataset.tabId)?.viewer?.editor?.dirty;
+        tab.querySelector('.tab-title').textContent = `${dirty ? '● ' : ''}${name.length > 10 ? name.slice(0, 10) + '…' : name}`;
+      }
+    }
+    this.tabsContainer.querySelector('.file-tab.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }
+
+  async renderActiveDocument(tab) {
+    if (!tab.surface) {
+      tab.surface = document.createElement('div');
+      tab.surface.className = 'document-surface';
+      tab.toolbar = document.createElement('div');
+      tab.surface.innerHTML = '<div class="viewer-loading"><div class="spinner"></div><p>Opening file…</p></div>';
+    }
     
     
     
     
     
   }
-
-  
 
   
 

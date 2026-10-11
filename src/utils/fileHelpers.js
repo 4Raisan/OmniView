@@ -174,13 +174,20 @@ export function readFileAsDataURL(file) {
 }
 
 export async function downloadBlob(blob, filename) {
-  
-  
-  
-  
-  
-  
-  
-  
-  
+  if (window.desktop) {
+    try {
+      return await window.desktop.saveFile(filename, new Uint8Array(await blob.arrayBuffer()));
+    } catch (error) {
+      alert('Could not save file: ' + error.message);
+      return false;
+    }
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
