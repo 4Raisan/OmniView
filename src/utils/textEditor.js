@@ -62,20 +62,37 @@ export class TextEditor {
       this.viewer.lowercaseLines = null;
       this.viewer.highlightedLines = null;
       this.area = document.createElement('textarea');
-       
-       
-      
-      
-      
-      
-      
-      
-      
-      
+      this.area.className = 'text-editor'; this.area.setAttribute('aria-label', 'Edit document text');
+      this.area.spellcheck = false; this.area.value = this.viewer.rawText;
+      this.area.maxLength = LIMIT;
+      this.area.oninput = () => {
+        this.changed = true;
+        const dirty = this.dirty;
+        const state = this.viewer.toolbarContainer.querySelector('.edit-state'); if (state) state.textContent = dirty ? 'Unsaved' : '';
+        this.onDirty?.(dirty);
+        const large = this.area.value.length > 128 * 1024;
+        if (large !== this.largePreview) { this.largePreview = large; this.renderButtons(); }
+        clearTimeout(this.previewTimer);
+        if (this.liveSplit && !large && !this.suspended) this.previewTimer = setTimeout(() => this.updatePreview(), 250);
+      };
+      this.area.onkeydown = event => {
+        if (event.key === 'Tab') { event.preventDefault(); document.execCommand('insertText', false, '    '); }
+      };
+      this.editing = true;
+      this.liveSplit = this.viewer.viewMode === 'split';
+      this.largePreview = this.area.value.length > 128 * 1024;
+      this.renderEditing();
+      this.area.focus();
     }
-    
+    this.renderButtons();
   }
-  
+  renderEditing() {
+    clearTimeout(this.previewTimer);
+    if (!this.liveSplit) { this.preview = null; this.viewer.container.replaceChildren(this.area); return; }
+    const wrap = document.createElement('div'); wrap.className = 'live-edit-split';
+    this.preview = document.createElement('div'); this.preview.className = 'markdown-body';
+    wrap.append(this.area, this.preview); this.viewer.container.replaceChildren(wrap); this.updatePreview();
+  }
   
   
   

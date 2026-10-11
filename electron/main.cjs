@@ -209,14 +209,23 @@ else {
     ipcMain.on('release-edit-file', (_event, token) => editFiles.delete(token));
     ipcMain.on('release-media', (_event, token) => releaseMedia(token));
     mainWindow.on('close', event => {
+      if (!mainWindow.allowEditedClose) { event.preventDefault(); mainWindow.webContents.send('request-close'); }
+    });
+    ipcMain.on('allow-close', () => { mainWindow.allowEditedClose = true; mainWindow.close(); });
+    ipcMain.on('allow-reload', () => { mainWindow.allowEditedReload = true; mainWindow.webContents.reload(); });
+    ipcMain.on('cancel-reload', () => { mainWindow.webContents.stop(); rendererReady = true; });
+    mainWindow.webContents.on('will-prevent-unload', event => {
+      if (mainWindow.allowEditedClose || mainWindow.allowEditedReload) { event.preventDefault(); mainWindow.allowEditedReload = false; }
+      else mainWindow.webContents.send('request-reload');
+    });
+    ipcMain.handle('print', () => new Promise(resolve => mainWindow.webContents.print({ printBackground: true }, success => resolve(success))));
+    ipcMain.handle('save-file', async (_event, { name, bytes }) => {
+      if (!(bytes instanceof Uint8Array) || bytes.byteLength > MAX_FILE_SIZE) throw new Error('Invalid export data.');
+      const result = await dialog.showSaveDialog(mainWindow, { defaultPath: path.basename(name) });
+      
+      
       
     });
-    
-    
-    
-    
-    
-    
     
     
     

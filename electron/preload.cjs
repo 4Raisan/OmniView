@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('desktop', {
   allowClose: () => ipcRenderer.send('allow-close'),
   onRequestClose: callback => ipcRenderer.on('request-close', () => callback()),
   allowReload: () => ipcRenderer.send('allow-reload'),
+  cancelReload: () => ipcRenderer.send('cancel-reload'),
   onRequestReload: callback => ipcRenderer.on('request-reload', () => callback()),
   onFile: callback => {
     ipcRenderer.on('open-file', (_event, file) => callback(file));

@@ -544,7 +544,39 @@ class OmniViewApp {
     });
   }
 
-  
+  async renderRecentFiles() {
+    const generation = this.recentGeneration = (this.recentGeneration || 0) + 1;
+    const list = window.desktop ? await window.desktop.recentFiles() : getRecentFiles();
+    if (generation !== this.recentGeneration) return;
+    if (!this.recentListEl) return;
+    this.recentListEl.innerHTML = '';
+
+    if (!list.length) {
+      this.recentListEl.innerHTML = `
+        <div style="padding: 16px 12px; color: var(--text-muted); font-size: 12px; text-align: center;">
+          No recent files yet
+        </div>
+      `;
+      return;
+    }
+
+    list.forEach(item => {
+      item.type ||= detectFileType(item.name);
+      const el = document.createElement('div');
+      el.className = 'recent-file-item';
+      el.tabIndex = 0;
+      el.setAttribute('role', 'button');
+      el.title = item.path ? `${item.path}${item.missing ? ' — file moved or deleted' : ''}` : 'Choose this file again from disk';
+      const reopen = () => {
+        if (window.desktop && item.id) window.desktop.openRecent(item.id);
+        else this.openFilePicker();
+      };
+      el.onclick = reopen;
+      el.onkeydown = event => { if (event.key === 'Enter' || event.key === ' ') {   } };
+      
+      
+    });
+  }
 
   
 
