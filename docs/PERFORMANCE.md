@@ -95,4 +95,19 @@ All **28 desktop integration checks passed on the final packaged build**, includ
 A local Microsoft Defender scan of the final 1.7.0 release folder reported no threats. The executables remain unsigned; SmartScreen may still show a publisher warning.
 
 
-The GitHub release downloads were rebuilt from commit e603f4d on a Windows runner and passed all 28 packaged desktop checks. The memory measurements above remain from the local 1.7.0 benchmark build; they were not rerun on the runner. Current download checksums are stored in releaseArtifacts, and the original benchmark-build checksums remain in benchmarkBuildArtifacts. The Defender scan above covers that original local build.
+The GitHub release downloads were rebuilt from commit e603f4d on a Windows runner and passed all 28 packaged desktop checks. The memory measurements above remain from the local 1.7.0 benchmark build; they were not rerun on the runner. 1.7.0 download checksums are stored in releaseArtifacts, and the original benchmark-build checksums remain in benchmarkBuildArtifacts. The Defender scan above covers that original local build.
+
+## OmniView 1.8.0 platform verification
+
+The application and its packaged executable passed desktop checks on Windows x64, Ubuntu Linux x64, Apple Silicon macOS and Intel macOS. The suite includes platform-specific checks, so Windows runs 29 checks and skips two; Linux and each Mac run 30 and skip one. [Verified release workflow](https://github.com/4Raisan/OmniView/actions/runs/38168846803).
+
+| Download | Size (decimal MB) |
+| --- | ---: |
+| Windows installer | 88.4 |
+| Windows portable | 88.2 |
+| Linux Debian package | 84.6 |
+| Linux AppImage | 108.5 |
+| Mac Apple Silicon DMG | 103.3 |
+| Mac Intel DMG | 109.9 |
+
+No memory or speed benchmark was rerun for 1.8.0. Earlier measurements above remain historical. The new package sizes and GitHub SHA-256 digests are recorded in crossPlatformRelease1_8 in benchmark-results.json. Published downloads also include SHA256SUMS.txt. Windows packages remain unsigned; Mac packages use ad-hoc signing and are not notarized.

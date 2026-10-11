@@ -4606,5 +4606,53 @@
     "sourceCommit": "e603f4d5fb677f939f25f02b7d9b5cf9317f2058",
     "workflowRun": "https://github.com/4Raisan/OmniView/actions/runs/38160325452",
     "packagedChecksPassed": 28
+  },
+  "crossPlatformRelease1_8": {
+    "sourceCommit": "c55cfe29192056fb4cfc7d765a842f1c99a155c1",
+    "workflowRun": "https://github.com/4Raisan/OmniView/actions/runs/38168846803",
+    "platforms": [
+      "Windows x64",
+      "Linux x64",
+      "macOS arm64",
+      "macOS x64"
+    ],
+    "assets": [
+      {
+        "name": "OmniView-1.8.0-linux-amd64.deb",
+        "bytes": 84609120,
+        "sha256": "ce093efd21d0cec90d42448912f31c9db8999ad47fbe6055f4bed4d6d4dc70de"
+      },
+      {
+        "name": "OmniView-1.8.0-linux-x86_64.AppImage",
+        "bytes": 108468083,
+        "sha256": "a3fcc93411d910009bb172f8164c2e323a1a9ae5867d7bd3c9cecf090bcb9275"
+      },
+      {
+        "name": "OmniView-1.8.0-mac-arm64.dmg",
+        "bytes": 103316727,
+        "sha256": "7f64762b397be0fa0c7775adf5f84f6912bec338d5adf3753e01e83903307158"
+      },
+      {
+        "name": "OmniView-1.8.0-mac-x64.dmg",
+        "bytes": 109938881,
+        "sha256": "fa01af8077180ced523183bee7009161035df0e0d82a4c58ee7c9e9f33417654"
+      },
+      {
+        "name": "OmniView-Portable-1.8.0-x64.exe",
+        "bytes": 88198690,
+        "sha256": "fe406cff940de2fcda5fe9e0fb57aca993e728438480a3ab40a9c0e93fb9ddc5"
+      },
+      {
+        "name": "OmniView-Setup-1.8.0-x64.exe",
+        "bytes": 88372127,
+        "sha256": "cc85379cec18b23f23f376e1999c96b3333d80e78cf25015eb69ebeb8ccbeb95"
+      },
+      {
+        "name": "SHA256SUMS.txt",
+        "bytes": 581,
+        "sha256": "eb311566a100049a5a33a74093dc18df3b7e55746a0abccb1639148fd4a131a8"
+      }
+    ],
+    "benchmarkRerun": false
   }
 }

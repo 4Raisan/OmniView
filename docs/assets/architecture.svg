@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc"><title id="title">OmniView architecture</title><desc id="desc">Local files pass through the Windows app and an isolated bridge into a tabbed workspace with format-specific readers. Media streams from disk; hidden previews are released and text editing is limited to 2 MB.</desc><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="none" stroke="#1268e8" stroke-width="1.5"/></marker><marker id="greenArrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="none" stroke="#0b8b75" stroke-width="1.5"/></marker>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc"><title id="title">OmniView architecture</title><desc id="desc">Local files pass through the Desktop app and an isolated bridge into a tabbed workspace with format-specific readers. Media streams from disk; hidden previews are released and text editing is limited to 2 MB.</desc><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="none" stroke="#1268e8" stroke-width="1.5"/></marker><marker id="greenArrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="none" stroke="#0b8b75" stroke-width="1.5"/></marker>
 <symbol id="doc" viewBox="0 0 64 64"><path d="M15 6h23l12 12v40H15zM38 6v13h12M23 29h19M23 38h19M23 47h12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 <symbol id="sheet" viewBox="0 0 64 64"><rect x="8" y="11" width="48" height="43" rx="5" fill="none" stroke="currentColor" stroke-width="3"/><path d="M8 24h48M8 35h48M8 45h48M23 24v30M40 24v30" stroke="currentColor" stroke-width="2"/></symbol>
 <symbol id="code" viewBox="0 0 64 64"><path d="m23 17-15 15 15 15m18-30 15 15-15 15M36 12l-8 40" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
@@ -18,7 +18,7 @@
 <path d="M174 231h86" stroke="#1268e8" stroke-width="2" marker-end="url(#arrow)"/>
 <rect x="286" y="194" width="84" height="64" rx="8" fill="none" stroke="#1268e8" stroke-width="2"/>
 <path d="M286 210h84m-65 17h46m-46 13h30" stroke="#1268e8" stroke-width="2"/>
-<text x="328" y="301" text-anchor="middle" font-size="19" font-weight="600">Windows app</text>
+<text x="328" y="301" text-anchor="middle" font-size="19" font-weight="600">Desktop app</text>
 <text x="328" y="326" text-anchor="middle" font-size="14" fill="#64748b">Files · menus · safe saves</text>
 <path d="M395 231h63" stroke="#1268e8" stroke-width="2"/>
 <use href="#shield" x="464" y="210" width="42" height="42" color="#1268e8"/>
@@ -50,4 +50,3 @@
 <use href="#pencil" x="834" y="469" width="30" height="30" color="#1268e8"/>
 <text x="878" y="484" font-size="15" font-weight="600">Lightweight editing</text>
 <text x="878" y="508" font-size="13" fill="#64748b">Text files up to 2 MB.</text></g></svg>
-
