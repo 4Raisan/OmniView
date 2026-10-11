@@ -27,7 +27,9 @@
     "start": "electron .",
     "desktop": "npm run build && electron .",
     "test": "playwright test",
-    "package": "npm run build && electron-builder --win nsis --x64"
+    "package": "npm run build && electron-builder --win nsis --x64",
+    "package:installer": "npm run package",
+    "package:portable": "npm run build && electron-builder --win portable --x64"
   },
   "keywords": [
     "viewer",
