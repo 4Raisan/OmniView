@@ -31,6 +31,42 @@ test('title and menus share one row and open the native application menu', async
   } finally { await application.evaluate(({Menu})=>{Menu.getApplicationMenu().items.find(item=>item.label==='Help').submenu.popup=global.originalPopup;}); }
 });
 
+test('update notices link to releases, dismiss, handle offline checks and expose project support', async () => {
+  // Let the bounded startup request finish before replacing the network transport.
+  await page.evaluate(() => window.desktop.checkUpdates());
+  await application.evaluate(({ dialog, shell }) => {
+    global.updateTest = { fetch: global.fetch, dialog: dialog.showMessageBox, external: shell.openExternal, links: [], messages: [] };
+    global.fetch = async () => ({ ok: true, json: async () => ({ tag_name: 'v9.0.0', draft: false, prerelease: false }) });
+    dialog.showMessageBox = async (_window, options) => { global.updateTest.messages.push(options.message); return { response: 1 }; };
+    shell.openExternal = async url => { global.updateTest.links.push(url); };
+  });
+  try {
+    await page.getByRole('button', { name: '★ Star on GitHub', exact: true }).click();
+    await application.evaluate(({ Menu }) => Menu.getApplicationMenu().items.find(item => item.label === 'Help').submenu.items.find(item => item.label === 'Check for updates…').click());
+    await expect(page.locator('#update-notice')).toContainText('OmniView 9.0.0 is available');
+    await page.reload();
+    await expect(page.locator('#update-notice')).toContainText('OmniView 9.0.0 is available');
+    await page.locator('#btn-view-update').click();
+    await expect.poll(() => application.evaluate(() => global.updateTest.links)).toEqual(['https://github.com/4Raisan/OmniView', 'https://github.com/4Raisan/OmniView/releases/latest']);
+    await page.screenshot({ path: path.join(__dirname, '..', 'test-results', 'update-notice.png') });
+    await page.getByRole('button', { name: 'Dismiss update notice' }).click();
+    await expect(page.locator('#update-notice')).toBeHidden();
+    await application.evaluate(({ Menu }) => {
+      global.fetch = async () => { throw new Error('offline'); };
+      Menu.getApplicationMenu().items.find(item => item.label === 'Help').submenu.items.find(item => item.label === 'Check for updates…').click();
+    });
+    await expect.poll(() => application.evaluate(() => global.updateTest.messages.at(-1))).toBe('Could not check for updates');
+    await expect(page.locator('#btn-hero-browse')).toBeVisible();
+  } finally {
+    await application.evaluate(({ dialog, shell }) => {
+      global.fetch = global.updateTest.fetch;
+      dialog.showMessageBox = global.updateTest.dialog;
+      shell.openExternal = global.updateTest.external;
+      delete global.updateTest;
+    });
+  }
+});
+
 test('Open uses the native picker and sidebar keyboard shortcut works', async () => {
   const target = path.join(os.tmpdir(), 'multiviewer-native-picker.txt');
   await fs.writeFile(target, 'selected using native picker');

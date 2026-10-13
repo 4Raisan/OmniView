@@ -1,6 +1,6 @@
 {
   "name": "multi-viewer",
-  "version": "1.8.1",
+  "version": "1.9.0",
   "license": "MIT",
   "description": "OmniView — Any File. One Viewer. Offline desktop file viewer",
   "type": "module",
@@ -12,7 +12,7 @@
     "start": "electron .",
     "desktop": "npm run build && electron .",
     "package": "npm run build && electron-builder --win nsis --x64 --publish never",
-    "test": "playwright test --config tooling/playwright.config.cjs",
+    "test": "node --test tooling/unit/*.test.cjs && playwright test --config tooling/playwright.config.cjs",
     "package:installer": "npm run package",
     "package:portable": "npm run build && electron-builder --win portable --x64 --publish never",
     "package:linux": "npm run build && electron-builder --linux AppImage deb --x64 --publish never",

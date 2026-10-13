@@ -1,6 +1,10 @@
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
 contextBridge.exposeInMainWorld('desktop', {
   platform: process.platform,
+  checkUpdates: () => ipcRenderer.invoke('check-updates'),
+  openUpdateRelease: () => ipcRenderer.invoke('open-update-release'),
+  supportProject: () => ipcRenderer.invoke('support-project'),
+  onUpdateStatus: callback => ipcRenderer.on('update-status', (_event, status) => callback(status)),
   showMenu: (name, x, y) => ipcRenderer.send('show-menu', { name, x, y }),
   openFiles: () => ipcRenderer.invoke('pick-files'),
   recentFiles: () => ipcRenderer.invoke('recent-files'),

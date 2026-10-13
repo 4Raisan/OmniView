@@ -38,3 +38,7 @@ See [editing details](EDITING.md) and [performance measurements](PERFORMANCE.md)
 CI checks Windows, Linux, Apple Silicon and Intel macOS. The manual **Build release downloads** workflow packages each platform, checks its executable, and collects downloads plus SHA256SUMS.txt in a draft release. It refuses to replace an already published version. Review and publish the draft after all targets pass.
 
 Generated dependencies, `app/dist/`, test output and `release/` stay ignored by Git. The SheetJS archive in `tooling/vendor/` is a required pinned dependency, not a backup. Application identity and preference keys remain compatible with earlier OmniView/Multi-Viewer installs.
+
+Each release also includes a source ZIP generated from the exact checked commit, including hidden workflow files and the pinned vendor archive. It excludes ignored local files, credentials, node_modules and generated build output. Its checksum is included in SHA256SUMS.txt.
+
+The main process checks the fixed GitHub latest-release API with an eight-second timeout. Results are cached in memory for one hour; the Help menu forces a fresh check. Version comparison is numeric and accepts stable major.minor.patch tags only. External update and support links are fixed to OmniView's repository; document network blocking remains in place.

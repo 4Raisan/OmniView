@@ -86,6 +86,15 @@ class OmniViewApp {
     this.applyFontSize(localStorage.getItem('multiviewer_font_size') || '1');
     this.renderRecentFiles();
     this.renderWelcomeScreen();
+    const showUpdate = result => {
+      const notice = document.getElementById('update-notice');
+      notice.hidden = result.status !== 'available';
+      if (!notice.hidden) document.getElementById('update-message').textContent = `OmniView ${result.latestVersion} is available. You’re using ${result.currentVersion}.`;
+    };
+    document.getElementById('btn-view-update').onclick = () => window.desktop?.openUpdateRelease();
+    document.getElementById('btn-dismiss-update').onclick = () => { document.getElementById('update-notice').hidden = true; };
+    window.desktop?.onUpdateStatus(showUpdate);
+    window.desktop?.checkUpdates().then(showUpdate).catch(() => {});
   }
 
   applyTheme(theme) {
@@ -537,12 +546,17 @@ class OmniViewApp {
             <span class="format-pill">.zip</span>
           </div>
         </div>
+        <p class="project-support">Enjoying OmniView? <button id="btn-star-project">★ Star on GitHub</button></p>
       </div>
     `;
 
     document.getElementById('btn-hero-browse')?.addEventListener('click', () => {
       this.openFilePicker();
     });
+    document.getElementById('btn-star-project').onclick = () => {
+      if (window.desktop) window.desktop.supportProject();
+      else window.open('https://github.com/4Raisan/OmniView', '_blank', 'noopener,noreferrer');
+    };
 
     document.getElementById('hero-dropzone')?.addEventListener('click', (e) => {
       if (e.target.closest('#btn-hero-browse')) return;

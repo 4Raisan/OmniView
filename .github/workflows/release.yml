@@ -81,6 +81,11 @@ jobs:
         shell: bash
         run: |
           tag="v$(node -p "require('./package.json').version")"
+          git archive --format=zip --prefix="OmniView-${tag#v}-source/" --output="release/OmniView-${tag#v}-source.zip" HEAD
+          unzip -t "release/OmniView-${tag#v}-source.zip"
+          source_check=$(mktemp -d)
+          unzip -q "release/OmniView-${tag#v}-source.zip" -d "$source_check"
+          (cd "$source_check/OmniView-${tag#v}-source" && npm ci --ignore-scripts && npm run build)
           if gh release view "$tag" >/dev/null 2>&1; then
             draft=$(gh release view "$tag" --json isDraft --jq .isDraft)
             if [ "$draft" != 'true' ]; then
@@ -88,8 +93,8 @@ jobs:
               exit 1
             fi
           else
-            gh release create "$tag" --draft --target "$GITHUB_SHA" --title "OmniView ${tag#v}" --notes 'Windows, Linux and macOS downloads. Packaged desktop checks passed on every target. Windows builds are unsigned. Mac builds use ad-hoc signing and are not notarized.'
+            gh release create "$tag" --draft --target "$GITHUB_SHA" --title "OmniView ${tag#v}" --notes 'Windows, Linux and macOS downloads, complete buildable source ZIP and SHA256SUMS.txt. Includes published-release update notices, Help → Check for updates, and a welcome-screen Star on GitHub link. Updates are downloaded manually from Releases. Versions before 1.9.0 need one manual upgrade to gain update notices. Packaged desktop checks passed on every target. Windows builds are unsigned. Mac builds use ad-hoc signing and are not notarized.'
           fi
           gh release edit "$tag" --target "$GITHUB_SHA"
-          (cd release && sha256sum *.exe *.AppImage *.deb *.dmg > SHA256SUMS.txt)
+          (cd release && sha256sum *.exe *.AppImage *.deb *.dmg *.zip > SHA256SUMS.txt)
           gh release upload "$tag" release/* --clobber

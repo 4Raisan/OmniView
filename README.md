@@ -19,6 +19,7 @@ Choose PDF defaults through your OS's **Open with** settings. Windows builds are
 - Reopen your last 25 files from disk.
 - Edit UTF-8 text and Markdown up to **2 MB**, with safe saves and live Markdown split preview.
 - Scroll PDF pages continuously and stream native media from disk.
+- From version 1.9.0, see a notice when a newer stable release is published. Use **Help → Check for updates** at any time.
 
 Media playback depends on codec support. DOC/RTF need conversion to DOCX; spreadsheet formulas display saved values.
 
@@ -31,6 +32,10 @@ Media playback depends on codec support. DOC/RTF need conversion to DOCX; spread
 ## Build from source
 
 Use Node.js 22.12 or newer.
+
+Releases from 1.9.0 include **OmniView-VERSION-source.zip**, a complete source bundle with the pinned SheetJS archive, build configuration and documentation. Extract it, then run the commands below. Installed dependencies and Electron are downloaded by `npm ci`; the ZIP is not a preinstalled application. The app downloads are separate release assets, so large binaries do not need to be committed to Git.
+
+Update checks contact GitHub Releases at startup and when requested; they send no document contents, filenames or local paths. Checks time out if offline and do not interrupt viewing. A notice opens the release page for a manual download; it does not install updates. Only published stable releases trigger notices, not commits or drafts. Versions before 1.9.0 need one manual upgrade to gain update notices.
 
 ```sh
 npm ci

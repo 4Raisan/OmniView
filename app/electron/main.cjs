@@ -32,6 +32,21 @@ function saveHistory() {
 }
 
 const { version: viewerVersion } = require('../../package.json');
+const { createUpdateChecker, RELEASE_PAGE } = require('./updates.cjs');
+const checkUpdates = createUpdateChecker(viewerVersion);
+async function showUpdateCheck() {
+  const result = await checkUpdates(true);
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.webContents.send('update-status', result);
+  const available = result.status === 'available';
+  const answer = await dialog.showMessageBox(mainWindow, {
+    type: 'info', title: 'OmniView updates',
+    message: available ? `OmniView ${result.latestVersion} is available` : result.status === 'current' ? `OmniView ${viewerVersion} is up to date` : 'Could not check for updates',
+    detail: available ? `You are using ${viewerVersion}. Download the new version from GitHub Releases.` : result.status === 'current' ? 'You have the latest published stable version.' : 'Check your connection and try again. You can keep using OmniView offline.',
+    buttons: available ? ['View release', 'Later'] : ['OK'], cancelId: available ? 1 : 0
+  });
+  if (available && answer.response === 0) shell.openExternal(RELEASE_PAGE);
+}
 let mainWindow;
 let rendererReady = false;
 let desktopReady = false;
@@ -189,6 +204,9 @@ else {
       submenu?.popup({ window: mainWindow, x: Math.max(0, Math.min(bounds.width - 1, Math.round((Number(x) || 0) * zoom))), y: Math.max(0, Math.min(bounds.height - 1, Math.round((Number(y) || 36) * zoom))) });
     });
     ipcMain.handle('pick-files', pickFiles);
+    ipcMain.handle('check-updates', () => checkUpdates());
+    ipcMain.handle('open-update-release', () => shell.openExternal(RELEASE_PAGE));
+    ipcMain.handle('support-project', () => shell.openExternal('https://github.com/4Raisan/OmniView'));
     ipcMain.handle('recent-files', async () => Promise.all(recentFiles.map(async item => {
       try {
         const stat = await fs.stat(item.path);
@@ -284,7 +302,8 @@ else {
       { label: 'Help', submenu: [
         { label: 'About OmniView', click: () => dialog.showMessageBox(mainWindow, { title: 'OmniView', message: `OmniView ${viewerVersion}`, detail: 'Any File. One Viewer.\n\nhttps://github.com/4Raisan/OmniView\n\nIf OmniView helps you, star the repository to support the project.\nShare ideas and feedback in GitHub Discussions.\n\nView and edit supported files locally.' }) },
         { label: 'GitHub repository — star to support', click: () => shell.openExternal('https://github.com/4Raisan/OmniView') },
-        { label: 'Discussions — ideas and feedback', click: () => shell.openExternal('https://github.com/4Raisan/OmniView/discussions/5') }
+        { label: 'Discussions — ideas and feedback', click: () => shell.openExternal('https://github.com/4Raisan/OmniView/discussions/5') },
+        { type: 'separator' }, { label: 'Check for updates…', click: showUpdateCheck }
       ] }
     ]));
     desktopReady = true;
