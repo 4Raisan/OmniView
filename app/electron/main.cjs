@@ -58,7 +58,6 @@ async function openPaths(paths) {
       const existing = recentFiles.find(item => pathKey(item.path) === pathKey(resolved));
       recentFiles = [{ id: existing?.id || randomUUID(), path: resolved, name: path.basename(resolved), size: stat.size },
         ...recentFiles.filter(item => pathKey(item.path) !== pathKey(resolved))].slice(0, 25);
-      await saveHistory().catch(error => console.warn('Could not save file history:', error.message));
       if (isMedia) {
         const mediaToken = randomUUID(); mediaFiles.set(mediaToken, resolved);
         mainWindow.webContents.send('open-media', { name: path.basename(resolved), size: stat.size, filePath: resolved, mediaToken, url: `viewer-media://${mediaToken}/media` });
@@ -72,6 +71,8 @@ async function openPaths(paths) {
       dialog.showErrorBox('Could not open file', `${path.basename(filePath)}: ${error.message}`);
     }
   }
+  // Persist once per batch; serial disk writes must not stall every file open.
+  await saveHistory().catch(error => console.warn('Could not save file history:', error.message));
 }
 
 async function pickFiles() {

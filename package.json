@@ -1,6 +1,6 @@
 {
   "name": "multi-viewer",
-  "version": "1.8.0",
+  "version": "1.8.1",
   "license": "MIT",
   "description": "OmniView — Any File. One Viewer. Offline desktop file viewer",
   "type": "module",

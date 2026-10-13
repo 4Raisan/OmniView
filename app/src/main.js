@@ -191,7 +191,11 @@ class OmniViewApp {
         window.desktop?.showMenu(button.dataset.menu, rect.left, rect.bottom);
       };
     });
-    window.desktop?.onFile(({ name, bytes, filePath, editToken }) => this.loadFile(new File([bytes], name), filePath, editToken));
+    // File.arrayBuffer() resolves asynchronously; preserve native selection order.
+    let fileOpenQueue = Promise.resolve();
+    window.desktop?.onFile(({ name, bytes, filePath, editToken }) => {
+      fileOpenQueue = fileOpenQueue.catch(() => {}).then(() => this.loadFile(new File([bytes], name), filePath, editToken));
+    });
     window.desktop?.onMedia(async ({ name, size, filePath, mediaToken, url }) => {
       const existing = this.tabs.find(tab => pathKey(tab.filePath) === pathKey(filePath));
       if (existing) await this.closeTab(existing.id);

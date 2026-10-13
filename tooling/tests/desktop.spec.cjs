@@ -518,6 +518,7 @@ test('recent files keep 25 real paths and reopen changed files after refresh and
   await Promise.all(targets.map((target, i) => fs.writeFile(target, `original ${i}`)));
   await application.evaluate(({ dialog }, paths) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: paths }); }, targets);
   await page.locator('#btn-open-file').click();
+  await expect(page.locator('.file-tab[data-full-name^="recent-"]')).toHaveCount(26, { timeout: 20000 });
   await expect(page.locator('#status-filename')).toHaveText('recent-25.txt');
   await expect(page.locator('.recent-file-item')).toHaveCount(25);
   await fs.writeFile(targets[25], 'changed on disk');
