@@ -29,7 +29,7 @@ Mac builds use a local ad-hoc signature, without a trusted publisher certificate
 
 ## Editing and formats
 
-See [editing details](EDITING.md) and [performance measurements](PERFORMANCE.md). Text and Markdown editing is limited to valid UTF-8 files up to 2 MB. DOC/RTF need conversion to DOCX; spreadsheet formulas display saved values. Documents have a 256 MB limit; native media streams from disk. Codec support depends on Electron and the platform. These formats and runtime limits apply on every OS.
+See [editing details](EDITING.md) and [performance measurements](PERFORMANCE.md). Text and Markdown editing is limited to valid UTF-8 files up to 2 MB. Legacy DOC supports read-only text up to 32 MB; RTF needs conversion to DOCX; spreadsheet formulas display saved values. Other documents have a 256 MB limit; native media streams from disk. Codec support depends on Electron and the platform. These formats and runtime limits apply on every OS.
 
 ## Checks and releases
 
@@ -42,3 +42,11 @@ Generated dependencies, `app/dist/`, test output and `release/` stay ignored by 
 Each release also includes a source ZIP generated from the exact checked commit, including hidden workflow files and the pinned vendor archive. It excludes ignored local files, credentials, node_modules and generated build output. Its checksum is included in SHA256SUMS.txt.
 
 The main process checks the fixed GitHub latest-release API with an eight-second timeout. Results are cached in memory for one hour; the Help menu forces a fresh check. Version comparison is numeric and accepts stable major.minor.patch tags only. External update and support links are fixed to OmniView's repository; document network blocking remains in place.
+
+## Legacy Word DOC
+
+Binary Word 97–2003 `.doc` files open as read-only text in the desktop app, including Unicode, headers, footers, footnotes, endnotes, text boxes and comments when present. Images, table structure, styling and original page layout are not reproduced. DOCX retains its formatted viewer. RTF/HTML disguised with a `.doc` extension and encrypted DOC files are rejected with a conversion message.
+
+`npm run build` bundles the pinned MIT-licensed binary reader into a standalone Node worker and copies its license. Packaged apps unpack that worker beside the ASAR archive; runtime parsing needs no installed Word, LibreOffice, network service or node_modules. The isolated renderer sends only file bytes through the preload bridge; the handler accepts no filesystem paths. Extracted text is inserted with textContent, without evaluating document content or macros.
+
+Limits: 32 MB input, 5 million extracted characters, a 15-second worker timeout, a 128 MB worker JavaScript heap limit and at most two active readers. These are parser safeguards, not a promise of protection against every malformed file. Genuine Word 97, Unicode, headers/footers, notes, encrypted flags, malformed input, ZIP nesting and packaged-worker paths are covered by the checks.

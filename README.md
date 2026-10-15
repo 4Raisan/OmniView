@@ -16,14 +16,14 @@ Choose PDF defaults through your OS's **Open with** settings. Windows builds are
 
 ## What it does
 
-- View PDFs, DOCX, spreadsheets, Markdown, text/code, images, audio/video and ZIP archives.
+- View PDFs, DOCX, legacy DOC text, spreadsheets, Markdown, text/code, images, audio/video and ZIP archives.
 - Use compact tabs, drag and drop, search, six dark themes, adjustable text size and a resizable sidebar.
 - Reopen your last 25 files from disk.
 - Edit UTF-8 text and Markdown up to **2 MB**, with safe saves and live Markdown split preview.
 - Scroll PDF pages continuously and stream native media from disk.
 - From version 1.9.0, see a notice when a newer stable release is published. Use **Help → Check for updates** at any time.
 
-Media playback depends on codec support. DOC/RTF need conversion to DOCX; spreadsheet formulas display saved values.
+Legacy DOC opens offline in a read-only text view, including Unicode, headers, footers and notes (up to 32 MB). Original page layout, images and formatting are not shown; use DOCX for formatted viewing. Password-protected DOC and RTF need conversion to unprotected DOCX. Media playback depends on codec support; spreadsheet formulas display saved values.
 
 **Shortcuts:** use Cmd on Mac, Ctrl elsewhere. Ctrl+O open · Ctrl+W close tab · Ctrl+B sidebar · Ctrl+P print · F11 fullscreen.
 

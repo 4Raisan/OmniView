@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc"><title id="title">OmniView architecture</title><desc id="desc">Local files pass through the Desktop app and an isolated bridge into a tabbed workspace with format-specific readers. Media streams from disk; hidden previews are released and text editing is limited to 2 MB. A separate main-process check compares published GitHub release versions and shows an update notice; users download updates in their browser. Document contents are never sent in update checks.</desc><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="none" stroke="#1268e8" stroke-width="1.5"/></marker><marker id="greenArrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="none" stroke="#0b8b75" stroke-width="1.5"/></marker>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc"><title id="title">OmniView architecture</title><desc id="desc">Local files pass through the Desktop app and an isolated bridge into a tabbed workspace with format-specific readers. Media streams from disk; hidden previews are released and text editing is limited to 2 MB. A separate main-process check compares published GitHub release versions and shows an update notice; users download updates in their browser. Document contents are never sent in update checks. Legacy DOC uses a bounded desktop worker and returns text only, without original formatting or images.</desc><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="none" stroke="#1268e8" stroke-width="1.5"/></marker><marker id="greenArrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="none" stroke="#0b8b75" stroke-width="1.5"/></marker>
 <symbol id="doc" viewBox="0 0 64 64"><path d="M15 6h23l12 12v40H15zM38 6v13h12M23 29h19M23 38h19M23 47h12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 <symbol id="sheet" viewBox="0 0 64 64"><rect x="8" y="11" width="48" height="43" rx="5" fill="none" stroke="currentColor" stroke-width="3"/><path d="M8 24h48M8 35h48M8 45h48M23 24v30M40 24v30" stroke="currentColor" stroke-width="2"/></symbol>
 <symbol id="code" viewBox="0 0 64 64"><path d="m23 17-15 15 15 15m18-30 15 15-15 15M36 12l-8 40" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
@@ -12,7 +12,10 @@
 <g font-family="Segoe UI,Arial,sans-serif" fill="#14243f">
 <text x="56" y="62" font-size="28" font-weight="700">OmniView</text>
 <text x="56" y="94" font-size="16" fill="#64748b">Any File. One Viewer.</text>
-<use href="#doc" x="80" y="194" width="72" height="72" color="#1268e8"/>
+<rect x="445" y="45" width="699" height="66" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+<text x="465" y="71" font-size="17" font-weight="600">Legacy DOC → desktop worker → read-only text view</text>
+<text x="465" y="94" font-size="13" fill="#64748b">32 MB input · 15 s timeout · Unicode, headers and notes · no Word installation</text>
+<path d="M328 194V79h111" fill="none" stroke="#1268e8" stroke-width="1.5" stroke-dasharray="5 5" marker-end="url(#arrow)"/><use href="#doc" x="80" y="194" width="72" height="72" color="#1268e8"/>
 <text x="116" y="301" text-anchor="middle" font-size="19" font-weight="600">Your files</text>
 <text x="116" y="326" text-anchor="middle" font-size="14" fill="#64748b">Open · drop · Open with</text>
 <path d="M174 231h86" stroke="#1268e8" stroke-width="2" marker-end="url(#arrow)"/>
@@ -32,7 +35,7 @@
 <text x="649" y="326" text-anchor="middle" font-size="14" fill="#64748b">Tabs · search · previews</text>
 <path d="M721 231h75m0-74v150m0-150h37m-37 75h37m-37 75h37" fill="none" stroke="#1268e8" stroke-width="2"/>
 <use href="#doc" x="853" y="135" width="42" height="42" color="#1268e8"/>
-<text x="913" y="161" font-size="17">PDF, documents &amp; sheets</text>
+<text x="913" y="161" font-size="17">PDF, DOCX &amp; sheets</text>
 <use href="#code" x="853" y="210" width="42" height="42" color="#1268e8"/>
 <text x="913" y="236" font-size="17">Text &amp; Markdown</text>
 <use href="#play" x="853" y="285" width="42" height="42" color="#1268e8"/>
