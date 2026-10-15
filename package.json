@@ -1,6 +1,6 @@
 {
   "name": "multi-viewer",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "license": "MIT",
   "description": "OmniView — Any File. One Viewer. Offline desktop file viewer",
   "type": "module",
@@ -63,7 +63,9 @@
       "!node_modules/**/*"
     ],
     "asar": true,
-    "asarUnpack": ["app/electron/generated/**"],
+    "asarUnpack": [
+      "app/electron/generated/**"
+    ],
     "win": {
       "target": [
         "portable"

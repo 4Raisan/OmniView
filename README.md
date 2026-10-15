@@ -4,13 +4,13 @@ View local files in one tabbed desktop app on Windows, Linux and macOS. Document
 
 ## Download
 
-**Version 1.9.0 · [All downloads and checksums](https://github.com/4Raisan/OmniView/releases/tag/v1.9.0)**
+**Version 1.10.0 · [All downloads and checksums](https://github.com/4Raisan/OmniView/releases/tag/v1.10.0)**
 
-- **Windows x64:** [Installer](https://github.com/4Raisan/OmniView/releases/download/v1.9.0/OmniView-Setup-1.9.0-x64.exe) or [portable](https://github.com/4Raisan/OmniView/releases/download/v1.9.0/OmniView-Portable-1.9.0-x64.exe).
-- **Linux x64:** [AppImage](https://github.com/4Raisan/OmniView/releases/download/v1.9.0/OmniView-1.9.0-linux-x86_64.AppImage) or [Debian package](https://github.com/4Raisan/OmniView/releases/download/v1.9.0/OmniView-1.9.0-linux-amd64.deb).
-- **macOS:** [Apple Silicon](https://github.com/4Raisan/OmniView/releases/download/v1.9.0/OmniView-1.9.0-mac-arm64.dmg) or [Intel](https://github.com/4Raisan/OmniView/releases/download/v1.9.0/OmniView-1.9.0-mac-x64.dmg).
+- **Windows x64:** [Installer](https://github.com/4Raisan/OmniView/releases/download/v1.10.0/OmniView-Setup-1.10.0-x64.exe) or [portable](https://github.com/4Raisan/OmniView/releases/download/v1.10.0/OmniView-Portable-1.10.0-x64.exe).
+- **Linux x64:** [AppImage](https://github.com/4Raisan/OmniView/releases/download/v1.10.0/OmniView-1.10.0-linux-x86_64.AppImage) or [Debian package](https://github.com/4Raisan/OmniView/releases/download/v1.10.0/OmniView-1.10.0-linux-amd64.deb).
+- **macOS:** [Apple Silicon](https://github.com/4Raisan/OmniView/releases/download/v1.10.0/OmniView-1.10.0-mac-arm64.dmg) or [Intel](https://github.com/4Raisan/OmniView/releases/download/v1.10.0/OmniView-1.10.0-mac-x64.dmg).
 
-**Source:** [Complete project ZIP](https://github.com/4Raisan/OmniView/releases/download/v1.9.0/OmniView-1.9.0-source.zip) · [SHA256 checksums](https://github.com/4Raisan/OmniView/releases/download/v1.9.0/SHA256SUMS.txt).
+**Source:** [Complete project ZIP](https://github.com/4Raisan/OmniView/releases/download/v1.10.0/OmniView-1.10.0-source.zip) · [SHA256 checksums](https://github.com/4Raisan/OmniView/releases/download/v1.10.0/SHA256SUMS.txt).
 
 Choose PDF defaults through your OS's **Open with** settings. Windows builds are unsigned; Mac builds use ad-hoc signing and are not notarized. See [installation notes](docs/DEVELOPMENT.md).
 

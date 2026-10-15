@@ -93,7 +93,11 @@ jobs:
               exit 1
             fi
           else
-            gh release create "$tag" --draft --target "$GITHUB_SHA" --title "OmniView ${tag#v}" --notes 'Windows, Linux and macOS downloads, complete buildable source ZIP and SHA256SUMS.txt. Includes published-release update notices, Help → Check for updates, and a welcome-screen Star on GitHub link. Updates are downloaded manually from Releases. Versions before 1.9.0 need one manual upgrade to gain update notices. Packaged desktop checks passed on every target. Windows builds are unsigned. Mac builds use ad-hoc signing and are not notarized.'
+            if [ -f "docs/releases/${tag#v}.md" ]; then
+              gh release create "$tag" --draft --target "$GITHUB_SHA" --title "OmniView ${tag#v}" --notes-file "docs/releases/${tag#v}.md"
+            else
+              gh release create "$tag" --draft --target "$GITHUB_SHA" --title "OmniView ${tag#v}" --notes 'Verified Windows, Linux and macOS downloads, complete buildable source ZIP and SHA256SUMS.txt. Windows builds are unsigned. Mac builds use ad-hoc signing and are not notarized.'
+            fi
           fi
           gh release edit "$tag" --target "$GITHUB_SHA"
           (cd release && sha256sum *.exe *.AppImage *.deb *.dmg *.zip > SHA256SUMS.txt)
