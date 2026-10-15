@@ -219,6 +219,31 @@ test('ZIP nested images and text open with correct types', async () => {
   await page.locator('.zip-table tr').filter({ hasText: 'picture.png' }).getByText('View', { exact: true }).click();
   await expect(page.locator('.image-toolbar .toolbar-badge')).toHaveText('1 × 1 px');
 });
+test('legacy DOC opens from disk and ZIP, preserves Unicode and recovers from invalid input', async () => {
+  const target = path.join(__dirname, '..', 'fixtures', 'legacy-headers.doc');
+  await application.evaluate(({ dialog }, target) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [target] }); }, target);
+  await page.locator('#btn-open-file').click();
+  await expect(page.locator('.legacy-doc-content')).toContainText('Molière');
+  await expect(page.locator('.legacy-doc-content')).toContainText('€ euro');
+  await expect(page.locator('.legacy-doc-content h2')).toHaveText(['Headers', 'Footers']);
+  await expect(page.locator('.legacy-doc-notice')).toContainText('Original page layout, images and formatting are not shown');
+  await page.locator('#zoom-in').click();
+  await expect(page.locator('.word-toolbar .zoom-display')).toHaveText('115%');
+  await open('foreground-doc.txt', 'Keep the foreground document', 'text/plain');
+  await page.locator('.file-tab[data-full-name="legacy-headers.doc"]').click();
+  await expect(page.locator('.legacy-doc-content')).toContainText('This is page two');
+  const archive = new JSZip();
+  archive.file('inside.doc', await fs.readFile(path.join(__dirname, '..', 'fixtures', 'legacy-word97.doc')));
+  await open('legacy.zip', await archive.generateAsync({ type: 'nodebuffer' }));
+  await page.locator('.zip-table tr').filter({ hasText: 'inside.doc' }).getByText('View', { exact: true }).click();
+  await expect(page.locator('.legacy-doc-content')).toContainText('Word 97-SR2');
+  await open('broken.doc', Buffer.from('not a binary document'));
+  await expect(page.locator('.viewer-error')).toContainText('not a binary Word DOC file');
+  await open('unicode.doc', await fs.readFile(path.join(__dirname, '..', 'fixtures', 'legacy-word.doc')));
+  await expect(page.locator('.legacy-doc-content')).toContainText('😀 ∀');
+  await page.screenshot({ path: path.join(__dirname, '..', 'test-results', 'legacy-doc.png') });
+});
+
 test('DOCX opens and rapid tab switching does not mix viewers', async () => {
   const zip = new JSZip();
   zip.file('[Content_Types].xml', '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
