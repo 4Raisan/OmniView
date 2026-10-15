@@ -7,7 +7,7 @@
   "main": "app/electron/main.cjs",
   "scripts": {
     "dev": "vite --config tooling/vite.config.js",
-    "build": "vite build --config tooling/vite.config.js && node tooling/scripts/copy-pdf-assets.mjs",
+    "build": "vite build --config tooling/vite.config.js && node tooling/scripts/copy-pdf-assets.mjs && node tooling/scripts/build-doc-reader.mjs",
     "preview": "vite preview --config tooling/vite.config.js",
     "start": "electron .",
     "desktop": "npm run build && electron .",
@@ -43,7 +43,9 @@
     "@playwright/test": "^1.64.0",
     "electron": "^40.10.2",
     "electron-builder": "^26.15.3",
-    "vite": "^8.3.4"
+    "esbuild": "0.28.2",
+    "vite": "^8.3.4",
+    "word-extractor": "1.0.4"
   },
   "author": "4Raisan",
   "build": {
@@ -61,6 +63,7 @@
       "!node_modules/**/*"
     ],
     "asar": true,
+    "asarUnpack": ["app/electron/generated/**"],
     "win": {
       "target": [
         "portable"

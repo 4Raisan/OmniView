@@ -1,6 +1,7 @@
 # Recreated by npm ci / npm run build
 node_modules/
 dist/
+app/electron/generated/
 release/
 test-results/
 playwright-report/

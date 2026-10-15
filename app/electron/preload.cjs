@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
 contextBridge.exposeInMainWorld('desktop', {
   platform: process.platform,
+  readLegacyDoc: bytes => ipcRenderer.invoke('read-legacy-doc', bytes),
   checkUpdates: () => ipcRenderer.invoke('check-updates'),
   openUpdateRelease: () => ipcRenderer.invoke('open-update-release'),
   supportProject: () => ipcRenderer.invoke('support-project'),

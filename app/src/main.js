@@ -328,7 +328,8 @@ class OmniViewApp {
     try {
       if (file.size > 256 * 1024 * 1024) throw new Error('Files larger than 256 MB are not supported.');
       if (type === FILE_TYPES.UNKNOWN) throw new Error('Unsupported file format. Choose a document, text file, image, media file or ZIP.');
-      if (/\.(doc|rtf)$/i.test(file.name)) throw new Error('Please convert this legacy document to DOCX using Word or LibreOffice.');
+      if (/\.rtf$/i.test(file.name)) throw new Error('Please convert RTF to DOCX using Word or LibreOffice.');
+      if (/\.doc$/i.test(file.name) && file.size > 32 * 1024 * 1024) throw new Error('Legacy DOC viewing is limited to 32 MB.');
       if (type === FILE_TYPES.IMAGE || type === FILE_TYPES.MEDIA) {
         data = URL.createObjectURL(file);
       } else if (type === FILE_TYPES.MARKDOWN || type === FILE_TYPES.CODE) {

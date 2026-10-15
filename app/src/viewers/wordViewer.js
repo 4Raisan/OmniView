@@ -1,4 +1,3 @@
-import { sanitizeDocument } from '../utils/safeHtml.js';
 import { escapeHtml } from '../utils/safeHtml.js';
 import * as docx from 'docx-preview';
 import { icons } from '../icons.js';
@@ -21,6 +20,11 @@ export class WordViewer {
     await new Promise(r => setTimeout(r, 20));
 
     try {
+      this.legacy = /\.doc$/i.test(filename);
+      if (this.legacy) {
+        await this.renderLegacy(arrayBuffer);
+        return;
+      }
       this.container.innerHTML = `
         <div class="word-viewer-wrapper ${this.viewMode}">
           <div class="word-canvas-scale" style="transform: scale(${this.zoom / 100}); transform-origin: top center;">
@@ -47,6 +51,25 @@ export class WordViewer {
         </div>
       `;
     }
+  }
+
+  async renderLegacy(arrayBuffer) {
+    if (!window.desktop?.readLegacyDoc) throw new Error('Legacy DOC viewing is available in the desktop app.');
+    const sections = await window.desktop.readLegacyDoc(new Uint8Array(arrayBuffer));
+    this.container.innerHTML = '<div class="word-viewer-wrapper fluid"><div class="word-canvas-scale"><article class="legacy-doc-content"></article></div></div>';
+    const target = this.container.querySelector('.legacy-doc-content');
+    const notice = document.createElement('p');
+    notice.className = 'legacy-doc-notice';
+    notice.textContent = 'Legacy DOC · Text view. Original page layout, images and formatting are not shown.';
+    target.append(notice);
+    for (const section of sections) {
+      if (section.title !== 'Document') {
+        const heading = document.createElement('h2'); heading.textContent = section.title; target.append(heading);
+      }
+      const text = document.createElement('pre'); text.textContent = section.text; target.append(text);
+    }
+    this.renderToolbar();
+    this.updateZoom();
   }
 
   extractHeadings(rootEl) {
@@ -98,7 +121,10 @@ export class WordViewer {
       }
       this.renderToolbar();
     };
-    toolbar.appendChild(modeSwitch);
+    if (!this.legacy) toolbar.appendChild(modeSwitch);
+    else {
+      const badge = document.createElement('span'); badge.className = 'toolbar-badge'; badge.textContent = 'DOC · Text view'; toolbar.append(badge);
+    }
 
     // Zoom controls
     const zoomGroup = document.createElement('div');

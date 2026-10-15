@@ -34,6 +34,7 @@ function saveHistory() {
 const { version: viewerVersion } = require('../../package.json');
 const { createUpdateChecker, RELEASE_PAGE } = require('./updates.cjs');
 const checkUpdates = createUpdateChecker(viewerVersion);
+const { readLegacyDoc } = require('./legacy-doc.cjs');
 async function showUpdateCheck() {
   const result = await checkUpdates(true);
   if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -204,6 +205,7 @@ else {
       submenu?.popup({ window: mainWindow, x: Math.max(0, Math.min(bounds.width - 1, Math.round((Number(x) || 0) * zoom))), y: Math.max(0, Math.min(bounds.height - 1, Math.round((Number(y) || 36) * zoom))) });
     });
     ipcMain.handle('pick-files', pickFiles);
+    ipcMain.handle('read-legacy-doc', (_event, bytes) => readLegacyDoc(bytes));
     ipcMain.handle('check-updates', () => checkUpdates());
     ipcMain.handle('open-update-release', () => shell.openExternal(RELEASE_PAGE));
     ipcMain.handle('support-project', () => shell.openExternal('https://github.com/4Raisan/OmniView'));
