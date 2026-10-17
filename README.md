@@ -53,6 +53,10 @@ npm start
 
 [Star OmniView](https://github.com/4Raisan/OmniView) if it helps you. [Share ideas and feedback](https://github.com/4Raisan/OmniView/discussions/5), or [report a problem](https://github.com/4Raisan/OmniView/issues).
 
+## Code signing policy
+
+Windows builds are currently unsigned; signing-provider enrollment is being prepared. See the [code signing policy](docs/CODE_SIGNING.md) and [privacy policy](docs/PRIVACY.md). Signing status will be changed only after verified signed downloads are available.
+
 ## License
 
 [MIT](LICENSE) · Copyright © 2026 4Raisan. Third-party dependencies retain their own licenses.
