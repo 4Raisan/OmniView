@@ -7,12 +7,14 @@ import { TextEditor } from './utils/textEditor.js';
 import { icons } from './icons.js';
 import {
   detectFileType,
+  sniffFileType,
+  describeUnsupported,
+  utf16Encoding,
   FILE_TYPES,
+  MAX_DOCUMENT_BYTES,
+  SNIFF_BYTES,
   getFileTypeIcon,
-  formatFileSize,
-  readFileAsArrayBuffer,
-  readFileAsText,
-  readFileAsDataURL
+  formatFileSize
 } from './utils/fileHelpers.js';
 import {
   getRecentFiles,
@@ -70,6 +72,7 @@ class OmniViewApp {
     this.applySidebarState();
     this.setupSidebarResize();
     this.bindEvents();
+    this.bindTabKeys();
     this.tabsResizeObserver = new ResizeObserver(() => this.fitTabs());
     this.tabsResizeObserver.observe(this.tabsContainer);
     document.addEventListener('selectionchange', () => {
@@ -203,7 +206,9 @@ class OmniViewApp {
     // File.arrayBuffer() resolves asynchronously; preserve native selection order.
     let fileOpenQueue = Promise.resolve();
     window.desktop?.onFile(({ name, bytes, filePath, editToken }) => {
-      fileOpenQueue = fileOpenQueue.catch(() => {}).then(() => this.loadFile(new File([bytes], name), filePath, editToken));
+      // The bytes already crossed IPC; wrapping them in a File would copy them twice more.
+      const source = { name, size: bytes.byteLength, type: '' };
+      fileOpenQueue = fileOpenQueue.catch(() => {}).then(() => this.loadFile(source, filePath, editToken, bytes));
     });
     window.desktop?.onMedia(async ({ name, size, filePath, mediaToken, url }) => {
       const existing = this.tabs.find(tab => pathKey(tab.filePath) === pathKey(filePath));
@@ -320,28 +325,34 @@ class OmniViewApp {
     });
   }
 
-  async loadFile(file, filePath = null, editToken = null) {
-    const type = detectFileType(file.name, file.type);
+  async loadFile(file, filePath = null, editToken = null, rawBytes = null) {
+    let type = detectFileType(file.name, file.type);
     let data;
     let editMeta = null;
+    const readBytes = async () => rawBytes ?? new Uint8Array(await file.arrayBuffer());
 
     try {
-      if (file.size > 256 * 1024 * 1024) throw new Error('Files larger than 256 MB are not supported.');
-      if (type === FILE_TYPES.UNKNOWN) throw new Error('Unsupported file format. Choose a document, text file, image, media file or ZIP.');
+      if (file.size > MAX_DOCUMENT_BYTES) throw new Error('Files larger than 256 MB are not supported.');
       if (/\.rtf$/i.test(file.name)) throw new Error('Please convert RTF to DOCX using Word or LibreOffice.');
       if (/\.doc$/i.test(file.name) && file.size > 32 * 1024 * 1024) throw new Error('Legacy DOC viewing is limited to 32 MB.');
+      if (type === FILE_TYPES.UNKNOWN) {
+        const header = rawBytes ? rawBytes.subarray(0, SNIFF_BYTES) : new Uint8Array(await file.slice(0, SNIFF_BYTES).arrayBuffer());
+        type = sniffFileType(header);
+        if (type === FILE_TYPES.UNKNOWN) throw new Error(describeUnsupported(header, file.name));
+      }
       if (type === FILE_TYPES.IMAGE || type === FILE_TYPES.MEDIA) {
-        data = URL.createObjectURL(file);
+        data = URL.createObjectURL(rawBytes ? new Blob([rawBytes]) : file);
       } else if (type === FILE_TYPES.MARKDOWN || type === FILE_TYPES.CODE) {
-        const bytes = new Uint8Array(await file.arrayBuffer());
-        const bom = bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf;
+        const bytes = await readBytes();
+        const encoding = utf16Encoding(bytes);
+        const bom = !encoding && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf;
         let validUtf8 = true;
-        try { data = new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
-        catch { validUtf8 = false; data = await readFileAsText(file); }
-        editMeta = { eligible: validUtf8 && !data.includes('\0') && file.size <= 2 * 1024 * 1024, bom, token: editToken, lineEnding: data.includes('\r\n') ? '\r\n' : '\n' };
+        try { data = new TextDecoder(encoding || 'utf-8', { fatal: true }).decode(bytes); }
+        catch { validUtf8 = false; data = new TextDecoder('utf-8').decode(bytes); }
+        // UTF-16 stays read-only: saving would silently re-encode it as UTF-8.
+        editMeta = { eligible: !encoding && validUtf8 && !data.includes('\0') && file.size <= 2 * 1024 * 1024, bom, token: editToken, lineEnding: data.includes('\r\n') ? '\r\n' : '\n' };
       } else {
-        // Excel, Word, PDF, Zip
-        data = await readFileAsArrayBuffer(file);
+        data = await readBytes();
       }
 
       const existing = filePath && this.tabs.find(tab => pathKey(tab.filePath) === pathKey(filePath));
@@ -430,17 +441,23 @@ class OmniViewApp {
 
   renderTabsList() {
     if (!this.tabsContainer) return;
+    const hadTabFocus = this.tabsContainer.contains(document.activeElement);
     this.tabsContainer.innerHTML = '';
 
     this.tabs.forEach(tab => {
+      const active = tab.id === this.activeTabId;
       const tabEl = document.createElement('div');
       tabEl.dataset.tabId = tab.id;
       tabEl.dataset.fullName = tab.name;
-      tabEl.className = `file-tab ${tab.id === this.activeTabId ? 'active' : ''}`;
+      tabEl.className = `file-tab ${active ? 'active' : ''}`;
+      tabEl.setAttribute('role', 'tab');
+      tabEl.setAttribute('aria-selected', String(active));
+      tabEl.setAttribute('aria-label', tab.name);
+      tabEl.tabIndex = active ? 0 : -1;
       tabEl.innerHTML = `
-        <span class="tab-icon">${getFileTypeIcon(tab.type)}</span>
+        <span class="tab-icon" aria-hidden="true">${getFileTypeIcon(tab.type)}</span>
         <span class="tab-title" title="${escapeHtml(tab.name)}">${tab.viewer?.editor?.dirty ? '● ' : ''}${escapeHtml(tab.name)}</span>
-        <span class="tab-close" title="Close">${icons.close}</span>
+        <button type="button" class="tab-close" tabindex="-1" title="Close" aria-label="Close ${escapeHtml(tab.name)}">${icons.close}</button>
       `;
 
       tabEl.onclick = () => this.activateTab(tab.id);
@@ -455,6 +472,35 @@ class OmniViewApp {
     });
     this.tabsContainer.querySelector('.file-tab.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     this.fitTabs();
+    if (hadTabFocus) this.focusActiveTab();
+  }
+
+  focusActiveTab() {
+    this.tabsContainer.querySelector('.file-tab.active')?.focus();
+  }
+
+  bindTabKeys() {
+    this.tabsContainer.setAttribute('role', 'tablist');
+    this.tabsContainer.setAttribute('aria-label', 'Open documents');
+    this.tabsContainer.addEventListener('keydown', event => {
+      const tabs = [...this.tabsContainer.querySelectorAll('.file-tab')];
+      const current = tabs.indexOf(document.activeElement?.closest('.file-tab'));
+      if (current < 0) return;
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        event.preventDefault();
+        Promise.resolve(this.closeTab(tabs[current].dataset.tabId)).then(() => this.focusActiveTab());
+        return;
+      }
+      const next = event.key === 'ArrowRight' ? (current + 1) % tabs.length
+        : event.key === 'ArrowLeft' ? (current - 1 + tabs.length) % tabs.length
+        : event.key === 'Home' ? 0
+        : event.key === 'End' ? tabs.length - 1
+        : null;
+      if (next === null) return;
+      event.preventDefault();
+      this.activateTab(tabs[next].dataset.tabId);
+      this.focusActiveTab();
+    });
   }
 
   fitTabs() {
@@ -496,11 +542,12 @@ class OmniViewApp {
       if (this.activeTabId !== tab.id) { tab.started = false; return; }
       const Viewer = Object.values(module)[0];
       tab.viewer = new Viewer(tab.surface, tab.toolbar, nestedFile => {
-        this.loadFile(new File([nestedFile.buffer], nestedFile.name));
+        const bytes = new Uint8Array(nestedFile.buffer);
+        this.loadFile({ name: nestedFile.name, size: bytes.byteLength, type: '' }, null, null, bytes);
       });
       await tab.viewer.render(tab.data, tab.name);
       if ([FILE_TYPES.CODE, FILE_TYPES.MARKDOWN].includes(tab.type) && window.desktop) {
-        new TextEditor(tab.viewer, tab.editMeta || { eligible: new TextEncoder().encode(tab.viewer.rawText).byteLength <= 2 * 1024 * 1024, bom: false, lineEnding: '\n' }, result => {
+        new TextEditor(tab.viewer, tab.editMeta, result => {
           if (tab.closed) { window.desktop.releaseEditFile(result.token); return; }
           tab.name = result.name; tab.filePath = result.path;
           this.renderTabsList();
@@ -513,7 +560,7 @@ class OmniViewApp {
         });
       }
       // Parsed viewers own their state; do not keep an extra original file buffer.
-      if ([FILE_TYPES.EXCEL, FILE_TYPES.WORD, FILE_TYPES.CODE, FILE_TYPES.MARKDOWN].includes(tab.type)) tab.data = null;
+      if ([FILE_TYPES.EXCEL, FILE_TYPES.WORD, FILE_TYPES.CODE, FILE_TYPES.MARKDOWN, FILE_TYPES.PDF, FILE_TYPES.ZIP].includes(tab.type)) tab.data = null;
       if (tab.closed) tab.viewer.destroy?.();
       else if (this.activeTabId !== tab.id) tab.viewer.suspend?.();
     } catch (error) {
@@ -529,21 +576,22 @@ class OmniViewApp {
           <div class="hero-icon-circle">${icons.upload}</div>
           <h2 class="hero-title">Any File. One Viewer.</h2>
           <p class="hero-subtitle">
-            Drag and drop any file here, or click Browse to view spreadsheets, documents, PDFs, code, or images instantly.
+            Drag and drop any file here, or click Browse to view spreadsheets, documents, PDFs, code, images or media instantly.
           </p>
           <button class="btn-primary" id="btn-hero-browse">
             ${icons.upload} Browse Files
           </button>
           <div class="supported-formats-pills">
+            <span class="format-pill">.pdf</span>
+            <span class="format-pill">.docx</span>
+            <span class="format-pill">.doc</span>
             <span class="format-pill">.xlsx</span>
             <span class="format-pill">.csv</span>
-            <span class="format-pill">.docx</span>
-            <span class="format-pill">.pdf</span>
             <span class="format-pill">.md</span>
-            <span class="format-pill">.json</span>
-            <span class="format-pill">.py</span>
-            <span class="format-pill">.js</span>
+            <span class="format-pill">.txt</span>
             <span class="format-pill">.png</span>
+            <span class="format-pill">.mp4</span>
+            <span class="format-pill">.mp3</span>
             <span class="format-pill">.zip</span>
           </div>
         </div>

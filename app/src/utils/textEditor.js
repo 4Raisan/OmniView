@@ -10,7 +10,12 @@ export class TextEditor {
     this.renderButtons();
   }
   get text() { return this.editing ? this.area.value : this.viewer.rawText; }
-  get dirty() { return !!this.changed && this.text.replace(/\r\n/g, '\n') !== this.base; }
+  get dirty() {
+    if (!this.changed) return false;
+    const text = this.text;
+    // Without a CR there is nothing to normalize; skip allocating a full copy per keystroke.
+    return text.includes('\r') ? text.replace(/\r\n/g, '\n') !== this.base : text !== this.base;
+  }
   renderButtons() {
     const toolbar = this.viewer.toolbarContainer.firstElementChild;
     if (!toolbar) return;
