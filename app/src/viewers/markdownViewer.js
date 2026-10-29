@@ -1,9 +1,12 @@
 import { sanitizeDocument } from '../utils/safeHtml.js';
-import { escapeHtml } from '../utils/safeHtml.js';
 import { selectedDocumentText } from '../utils/selectedText.js';
 import { marked } from 'marked';
 import { hljs, loadCodeLanguage } from '../utils/codeLanguages.js';
 import { icons } from '../icons.js';
+
+// marked 18 removed the `highlight` option; fenced code is highlighted after
+// sanitizing, in setupCodeBlockCopyButtons.
+marked.setOptions({ gfm: true, breaks: true });
 
 export class MarkdownViewer {
   constructor(container, toolbarContainer) {
@@ -22,20 +25,6 @@ export class MarkdownViewer {
       if (token.type === 'code' && token.lang) languages.add(token.lang.split(/\s/)[0]);
     });
     this.loadedLanguages = Object.fromEntries(await Promise.all([...languages].map(async language => [language, await loadCodeLanguage(language)])));
-
-    // Configure marked with highlight.js
-    marked.setOptions({
-      gfm: true,
-      breaks: true,
-      highlight: (code, lang) => {
-        if (lang && hljs.getLanguage(lang)) {
-          try {
-            return hljs.highlight(code, { language: lang }).value;
-          } catch {}
-        }
-        return escapeHtml(code);
-      }
-    });
 
     this.renderToolbar();
     this.renderContent();

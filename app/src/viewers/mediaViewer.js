@@ -33,7 +33,24 @@ export class MediaViewer {
 
     this.mediaEl = this.container.querySelector('#media-element');
     this.mediaEl.preload = 'metadata';
+    this.mediaEl.onerror = () => this.showPlaybackError();
+    this.mediaEl.onloadeddata = () => this.container.querySelector('.media-error')?.remove();
     this.renderToolbar();
+  }
+
+  showPlaybackError() {
+    if (this.container.querySelector('.media-error')) return;
+    const unsupported = this.mediaEl?.error?.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED;
+    const notice = document.createElement('div');
+    notice.className = 'viewer-error media-error';
+    const heading = document.createElement('h3');
+    heading.textContent = 'Cannot play this file';
+    const detail = document.createElement('p');
+    detail.textContent = unsupported
+      ? 'OmniView cannot decode this container or codec. Convert it to MP4 (H.264/AAC), WebM, MP3, WAV, OGG, M4A or FLAC.'
+      : 'The media could not be read. The file may be damaged or incomplete.';
+    notice.append(heading, detail);
+    this.container.querySelector('.media-viewer-container')?.appendChild(notice);
   }
 
   suspend() {
@@ -49,6 +66,7 @@ export class MediaViewer {
   resume() {
     if (!this.suspended || !this.mediaEl) return;
     this.suspended = false;
+    this.container.querySelector('.media-error')?.remove();
     this.mediaEl.src = this.dataUrl;
     this.mediaEl.playbackRate = this.rate || 1;
     this.mediaEl.addEventListener('loadedmetadata', () => {

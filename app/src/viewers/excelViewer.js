@@ -3,6 +3,11 @@ import * as XLSX from 'xlsx';
 import { icons } from '../icons.js';
 import { downloadBlob } from '../utils/fileHelpers.js';
 
+// Excel allows 1,048,576 x 16,384 cells. Materialising that as JS arrays is not
+// survivable, so bound what is read and say so in the toolbar.
+const MAX_SHEET_ROWS = 200_000;
+const MAX_SHEET_COLUMNS = 512;
+
 export class ExcelViewer {
   constructor(container, toolbarContainer) {
     this.container = container;
@@ -10,7 +15,10 @@ export class ExcelViewer {
     this.workbook = null;
     this.currentSheetName = '';
     this.sheetData = [];
+    this.sheetTypes = [];
     this.filteredData = [];
+    this.filteredTypes = [];
+    this.truncated = false;
     this.currentPage = 1;
     this.pageSize = 150;
     this.searchQuery = '';
@@ -24,7 +32,7 @@ export class ExcelViewer {
     await new Promise(r => setTimeout(r, 10));
 
     try {
-      this.workbook = XLSX.read(arrayBuffer, { type: 'array', cellFormula: true, cellDates: true });
+      this.workbook = XLSX.read(arrayBuffer, { type: 'array', cellFormula: true, cellDates: true, cellNF: true });
       if (!this.workbook.SheetNames.length) {
         throw new Error('Workbook contains no sheets.');
       }
@@ -45,26 +53,54 @@ export class ExcelViewer {
 
   loadCurrentSheet() {
     const sheet = this.workbook.Sheets[this.currentSheetName];
-    if (!sheet) {
+    if (!sheet || !sheet['!ref']) {
       this.sheetData = [];
-      this.filteredData = [];
+      this.sheetTypes = [];
+      this.truncated = false;
+      this.currentPage = 1;
+      this.applySearchFilter();
       return;
     }
 
-    // Convert sheet to 2D array
-    this.sheetData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    const range = XLSX.utils.decode_range(sheet['!ref']);
+    const lastRow = Math.min(range.e.r, range.s.r + MAX_SHEET_ROWS - 1);
+    const lastColumn = Math.min(range.e.c, range.s.c + MAX_SHEET_COLUMNS - 1);
+    this.truncated = lastRow < range.e.r || lastColumn < range.e.c;
+    const rows = [];
+    const types = [];
+    for (let r = range.s.r; r <= lastRow; r++) {
+      const row = [];
+      const typeRow = [];
+      for (let c = range.s.c; c <= lastColumn; c++) {
+        const cell = sheet[XLSX.utils.encode_cell({ r, c })];
+        // format_cell applies the workbook's own number format and date style;
+        // textContent on a raw Date would print "Mon Oct 13 2026 00:00:00 GMT+...".
+        row.push(cell ? XLSX.utils.format_cell(cell) : '');
+        typeRow.push(cell?.t === 'n');
+      }
+      rows.push(row);
+      types.push(typeRow);
+    }
+    this.sheetData = rows;
+    this.sheetTypes = types;
     this.currentPage = 1;
     this.applySearchFilter();
   }
 
   applySearchFilter() {
-    if (!this.searchQuery.trim()) {
+    const query = this.searchQuery.trim().toLowerCase();
+    if (!query) {
       this.filteredData = this.sheetData;
-    } else {
-      const q = this.searchQuery.toLowerCase();
-      this.filteredData = this.sheetData.filter(row =>
-        row.some(cell => String(cell).toLowerCase().includes(q))
-      );
+      this.filteredTypes = this.sheetTypes;
+      return;
+    }
+    this.filteredData = [];
+    this.filteredTypes = [];
+    for (let index = 0; index < this.sheetData.length; index++) {
+      if (this.sheetData[index].some(cell => String(cell).toLowerCase().includes(query))) {
+        this.filteredData.push(this.sheetData[index]);
+        this.filteredTypes.push(this.sheetTypes[index]);
+      }
     }
   }
 
@@ -108,16 +144,21 @@ export class ExcelViewer {
     const input = searchWrapper.querySelector('input');
     input.oninput = (e) => {
       this.searchQuery = e.target.value;
-      this.currentPage = 1;
-      this.applySearchFilter();
-      this.renderGrid();
-      const badge = this.toolbarContainer.querySelector('.toolbar-badge');
-      if (badge) badge.textContent = `${this.filteredData.length} / ${this.sheetData.length} rows`;
+      clearTimeout(this.searchTimer);
+      // Scanning every cell of a large sheet on each keystroke freezes the UI.
+      this.searchTimer = setTimeout(() => {
+        this.currentPage = 1;
+        this.applySearchFilter();
+        this.renderGrid();
+        const badge = this.toolbarContainer.querySelector('.excel-row-count');
+        if (badge) badge.textContent = `${this.filteredData.length} / ${this.sheetData.length} rows`;
+      }, 150);
     };
 
     const clearBtn = searchWrapper.querySelector('.search-clear-btn');
     if (clearBtn) {
       clearBtn.onclick = () => {
+        clearTimeout(this.searchTimer);
         this.searchQuery = '';
         this.currentPage = 1;
         this.applySearchFilter();
@@ -130,9 +171,17 @@ export class ExcelViewer {
     const totalRows = this.sheetData.length;
     const showingRows = this.filteredData.length;
     const statsBadge = document.createElement('div');
-    statsBadge.className = 'toolbar-badge';
+    statsBadge.className = 'toolbar-badge excel-row-count';
     statsBadge.textContent = `${showingRows}${showingRows !== totalRows ? ` / ${totalRows}` : ''} rows`;
     toolbar.appendChild(statsBadge);
+
+    if (this.truncated) {
+      const limitBadge = document.createElement('div');
+      limitBadge.className = 'toolbar-badge excel-limit';
+      limitBadge.textContent = `Limited to ${MAX_SHEET_ROWS.toLocaleString()} rows × ${MAX_SHEET_COLUMNS} columns`;
+      limitBadge.title = 'This sheet is larger than the viewer reads. Open it in a spreadsheet application for the full range.';
+      toolbar.appendChild(limitBadge);
+    }
 
     // Action buttons
     const actions = document.createElement('div');
@@ -141,7 +190,7 @@ export class ExcelViewer {
     // Copy table button
     const copyBtn = document.createElement('button');
     copyBtn.className = 'btn-icon';
-    copyBtn.title = 'Copy visible table as TSV';
+    copyBtn.title = 'Copy all filtered rows as TSV';
     copyBtn.innerHTML = icons.copy;
     copyBtn.onclick = () => this.copyTable();
     actions.appendChild(copyBtn);
@@ -230,7 +279,7 @@ export class ExcelViewer {
         const td = document.createElement('td');
         const val = row && row[c] !== undefined ? row[c] : '';
         td.textContent = val;
-        if (typeof val === 'number') td.classList.add('num-cell');
+        if (this.filteredTypes[startIdx + rowOffset]?.[c]) td.classList.add('num-cell');
         tr.appendChild(td);
       }
       tbody.appendChild(tr);
@@ -302,5 +351,16 @@ export class ExcelViewer {
     toast.textContent = msg;
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 2500);
+  }
+
+  destroy() {
+    clearTimeout(this.searchTimer);
+    this.workbook = null;
+    this.sheetData = [];
+    this.sheetTypes = [];
+    this.filteredData = [];
+    this.filteredTypes = [];
+    this.container.replaceChildren();
+    this.toolbarContainer.replaceChildren();
   }
 }

@@ -61,12 +61,15 @@ export class CodeViewer {
     const input = searchWrapper.querySelector('input');
     input.oninput = (e) => {
       this.searchQuery = e.target.value;
-      this.renderSearch();
+      clearTimeout(this.searchTimer);
+      // Walking every rendered line per keystroke stalls on large files.
+      this.searchTimer = setTimeout(() => this.renderSearch(), 150);
     };
 
     const clearBtn = searchWrapper.querySelector('.search-clear-btn');
     if (clearBtn) {
       clearBtn.onclick = () => {
+        clearTimeout(this.searchTimer);
         this.searchQuery = '';
         this.renderToolbar();
         this.renderContent();
@@ -211,6 +214,7 @@ export class CodeViewer {
   }
 
   destroy() {
+    clearTimeout(this.searchTimer);
     this.editor?.destroy();
     this.container.replaceChildren();
     this.highlightedLines = null;
@@ -220,6 +224,7 @@ export class CodeViewer {
   }
 
   suspend() {
+    clearTimeout(this.searchTimer);
     if (this.editor?.editing) return;
     this.scrollPosition = this.container.firstElementChild?.scrollTop || 0;
     this.container.replaceChildren();
