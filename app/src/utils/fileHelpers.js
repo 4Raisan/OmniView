@@ -3,6 +3,7 @@ import { icons } from '../icons.js';
 export const FILE_TYPES = {
   EXCEL: 'excel',
   WORD: 'word',
+  PRESENTATION: 'presentation',
   PDF: 'pdf',
   MARKDOWN: 'markdown',
   CODE: 'code',
@@ -121,6 +122,11 @@ const EXTENSION_MAP = {
   doc: FILE_TYPES.WORD,
   rtf: FILE_TYPES.WORD,
 
+  // Presentations
+  pptx: FILE_TYPES.PRESENTATION,
+  pptm: FILE_TYPES.PRESENTATION,
+  ppt: FILE_TYPES.PRESENTATION,
+
   // PDF
   pdf: FILE_TYPES.PDF,
 
@@ -215,6 +221,7 @@ export function detectFileType(filename = '', mimeType = '') {
   if (mimeType === 'application/pdf') return FILE_TYPES.PDF;
   if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) return FILE_TYPES.EXCEL;
   if (mimeType.includes('wordprocessingml') || mimeType.includes('msword')) return FILE_TYPES.WORD;
+  if (mimeType.includes('presentationml') || mimeType.includes('ms-powerpoint')) return FILE_TYPES.PRESENTATION;
   if (mimeType.startsWith('text/')) return FILE_TYPES.CODE;
 
   // Unknown extension: the caller sniffs the header before deciding.
@@ -225,6 +232,7 @@ export function getFileTypeIcon(type) {
   switch (type) {
     case FILE_TYPES.EXCEL: return icons.fileSpreadsheet;
     case FILE_TYPES.WORD: return icons.fileWord;
+    case FILE_TYPES.PRESENTATION: return icons.filePresentation;
     case FILE_TYPES.PDF: return icons.filePdf;
     case FILE_TYPES.MARKDOWN: return icons.fileMarkdown;
     case FILE_TYPES.IMAGE: return icons.fileImage;

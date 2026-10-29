@@ -57,6 +57,7 @@ export class TextEditor {
   async toggle() {
     if (this.editing) {
       clearTimeout(this.previewTimer);
+      this.persistDraft();
       const text = this.area.value;
       this.area = null;
       this.editing = false;
@@ -79,6 +80,7 @@ export class TextEditor {
         if (large !== this.largePreview) { this.largePreview = large; this.renderButtons(); }
         clearTimeout(this.previewTimer);
         if (this.liveSplit && !large && !this.suspended) this.previewTimer = setTimeout(() => this.updatePreview(), 250);
+        this.scheduleDraft();
       };
       this.area.onkeydown = event => {
         if (event.key === 'Tab') { event.preventDefault(); document.execCommand('insertText', false, '    '); }
@@ -99,11 +101,43 @@ export class TextEditor {
     wrap.append(this.area, this.preview); this.viewer.container.replaceChildren(wrap); this.updatePreview();
   }
   updatePreview() { if (this.preview && this.area && !this.suspended) this.viewer.renderLivePreview(this.preview, this.area.value); }
-  suspend() { this.suspended = true; clearTimeout(this.previewTimer); this.preview?.replaceChildren(); }
+  scheduleDraft() {
+    clearTimeout(this.draftTimer);
+    // An unanswered recovery offer must not be overwritten by new typing.
+    if (!this.meta.token || !window.desktop || this.draftPending) return;
+    this.draftTimer = setTimeout(() => this.persistDraft(), 2000);
+  }
+  async persistDraft() {
+    clearTimeout(this.draftTimer);
+    if (!this.editing || !this.meta.token || !window.desktop || this.saving || this.draftPending) return;
+    const text = this.area.value.replace(/\r\n/g, '\n');
+    // Typing back to the original leaves nothing worth recovering.
+    if (text === this.base) { window.desktop.discardDraft(this.meta.token); return; }
+    try {
+      await window.desktop.saveDraft({ token: this.meta.token, text, bom: this.meta.bom, lineEnding: this.meta.lineEnding });
+    } catch {
+      // Recovery is best effort: a full or read-only disk must never interrupt typing.
+    }
+  }
+  async restoreDraft(text) {
+    if (!this.editing) await this.toggle();
+    this.area.value = text;
+    this.changed = true;
+    this.area.dispatchEvent(new Event('input'));
+    this.area.focus();
+  }
+  suspend() {
+    this.suspended = true;
+    clearTimeout(this.previewTimer);
+    this.preview?.replaceChildren();
+    // A hidden tab still holds unsaved work; capture it before a crash can.
+    if (this.editing) this.persistDraft();
+  }
   resume() { this.suspended = false; this.updatePreview(); }
-  destroy() { clearTimeout(this.previewTimer); this.area = null; this.preview = null; }
+  destroy() { clearTimeout(this.previewTimer); clearTimeout(this.draftTimer); this.area = null; this.preview = null; }
   async save(saveAs = false) {
     if (this.saving || !this.meta.eligible) return false;
+    clearTimeout(this.draftTimer);
     this.error = ''; this.saving = true; this.renderButtons();
     try {
       const text = this.text;

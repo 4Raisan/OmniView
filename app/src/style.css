@@ -668,6 +668,21 @@ body {
   display: flex;
 }
 
+.code-find-nav { display: flex; align-items: center; gap: 2px; flex: 0 0 auto; }
+.code-find-nav[hidden] { display: none; }
+.code-find-count { font-size: calc(11px * var(--font-scale, 1)); color: var(--text-muted); white-space: nowrap; padding-right: 2px; }
+.search-nav-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  padding: 2px;
+  border-radius: 4px;
+}
+.search-nav-btn:hover:not(:disabled) { background: var(--bg-tertiary); color: var(--text-primary); }
+.search-nav-btn:disabled { opacity: 0.4; cursor: default; }
+
 .toolbar-actions {
   display: flex;
   align-items: center;
@@ -1067,6 +1082,11 @@ body {
   background: rgba(245, 158, 11, 0.15);
 }
 
+.code-line.current-match {
+  background: rgba(245, 158, 11, 0.32);
+  box-shadow: inset 2px 0 0 #f59e0b;
+}
+
 .line-num {
   width: 45px;
   min-width: 45px;
@@ -1266,6 +1286,7 @@ body {
   .app-header, .app-sidebar, .context-toolbar, .app-statusbar, .drop-overlay, .toast-notification, .code-copy-btn { display: none !important; }
   html, body, .app-body, .app-main, .viewer-canvas, .document-surface { display: block !important; height: auto !important; overflow: visible !important; background: white !important; color: black !important; }
   .word-canvas-scale { transform: none !important; }
+  .code-viewer-container { height: auto !important; overflow: visible !important; }
   .word-viewer-wrapper, .markdown-rendered-view { padding: 0 !important; }
   .docx-wrapper { background: white !important; padding: 0 !important; }
   .docx-wrapper > section { box-shadow: none !important; margin: 0 !important; }
@@ -1432,8 +1453,36 @@ mark.md-match { background: var(--accent-light); color: var(--text-primary); out
 .platform-darwin .window-titlebar { padding-left: 88px; padding-right: 12px; }
  .update-notice { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 8px 12px; background: var(--bg-secondary); color: var(--text-primary); border-bottom: 1px solid var(--border-color); font-size: 12px; }
  .update-notice[hidden] { display: none; }
+.draft-recovery { display: flex; align-items: center; gap: 10px; flex-shrink: 0; padding: 8px 12px; background: var(--bg-secondary); border-bottom: 1px solid var(--border-color); color: var(--text-primary); font-size: calc(12px * var(--font-scale, 1)); }
+.draft-recovery[hidden] { display: none; }
+.draft-recovery span { flex: 1 1 auto; }
  .project-support { margin-top: 16px; font-size: 12px; color: var(--text-muted); }
  .project-support button { background: transparent; border: 0; color: var(--text-primary); cursor: pointer; text-decoration: underline; font: inherit; }
  .legacy-doc-content { max-width: 850px; margin: 24px auto; padding: 32px; background: var(--bg-secondary); color: var(--text-primary); }
  .legacy-doc-content pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.65; user-select: text; }
  .legacy-doc-notice { color: var(--text-muted); font-size: 12px; margin-bottom: 24px; }
+
+.pptx-slide {
+  box-sizing: border-box;
+  max-width: 1000px;
+  min-height: min-content;
+  margin: 24px auto;
+  padding: 28px 36px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  user-select: text;
+}
+.pptx-slide .legacy-doc-notice { margin: 0 0 20px; }
+.pptx-title { margin: 0 0 16px; font-size: calc(26px * var(--font-scale, 1)); line-height: 1.25; }
+.pptx-body { margin: 0 0 14px; font-size: calc(15px * var(--font-scale, 1)); line-height: 1.6; }
+.pptx-title p, .pptx-body p { margin: 0 0 6px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.pptx-table { border-collapse: collapse; margin: 0 0 16px; max-width: 100%; font-size: calc(14px * var(--font-scale, 1)); }
+.pptx-table td { border: 1px solid var(--border-color); padding: 6px 10px; white-space: pre-wrap; overflow-wrap: anywhere; vertical-align: top; }
+.pptx-image { display: block; max-width: 100%; max-height: 420px; height: auto; margin: 0 0 16px; border-radius: 4px; }
+.pptx-skipped { margin: 0 0 16px; font-size: 12px; color: var(--text-muted); }
+.pptx-notes { margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 12px; }
+.pptx-notes summary { cursor: pointer; font-size: 13px; color: var(--text-secondary); }
+.pptx-notes pre { margin: 10px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: calc(13px * var(--font-scale, 1)); line-height: 1.6; }
+.pptx-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }

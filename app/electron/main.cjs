@@ -31,6 +31,45 @@ function saveHistory() {
   return recentWrite;
 }
 
+// Unsaved drafts survive a crash so the next launch can offer them back. They are keyed
+// by a hash of the path, never the path itself, and are bounded in count and age because
+// they hold document text on disk.
+const MAX_DRAFTS = 20;
+const DRAFT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const draftsDirectory = () => path.join(app.getPath('userData'), 'drafts');
+const draftFile = filePath => path.join(draftsDirectory(), digest(Buffer.from(pathKey(filePath))).slice(0, 32) + '.json');
+
+async function readDraft(filePath) {
+  try {
+    const record = JSON.parse(await fs.readFile(draftFile(filePath), 'utf8'));
+    return typeof record?.text === 'string' && typeof record.baseHash === 'string' ? record : null;
+  } catch { return null; }
+}
+
+async function deleteDraft(filePath) {
+  await fs.unlink(draftFile(filePath)).catch(() => {});
+}
+
+async function pruneDrafts() {
+  let entries;
+  try { entries = await fs.readdir(draftsDirectory(), { withFileTypes: true }); }
+  catch { return; }
+  const kept = [];
+  for (const entry of entries) {
+    if (!entry.isFile()) continue;
+    const full = path.join(draftsDirectory(), entry.name);
+    // A rename interrupted by a crash leaves the temporary behind.
+    if (entry.name.endsWith('.tmp')) { await fs.unlink(full).catch(() => {}); continue; }
+    if (!entry.name.endsWith('.json')) continue;
+    try { kept.push({ full, mtime: (await fs.stat(full)).mtimeMs }); } catch {}
+  }
+  kept.sort((a, b) => b.mtime - a.mtime);
+  const cutoff = Date.now() - DRAFT_MAX_AGE_MS;
+  for (const [index, draft] of kept.entries()) {
+    if (index >= MAX_DRAFTS || draft.mtime < cutoff) await fs.unlink(draft.full).catch(() => {});
+  }
+}
+
 const { version: viewerVersion } = require('../../package.json');
 const { createUpdateChecker, RELEASE_PAGE } = require('./updates.cjs');
 const checkUpdates = createUpdateChecker(viewerVersion);
@@ -104,7 +143,9 @@ async function openPaths(paths) {
       const bytes = await fs.readFile(filePath);
       const editToken = bytes.length <= 2 * 1024 * 1024 ? randomUUID() : null;
       if (editToken) editFiles.set(editToken, { path: resolved, hash: digest(bytes) });
-      window.webContents.send('open-file', { name: path.basename(filePath), bytes, filePath: resolved, editToken });
+      const record = editToken ? await readDraft(resolved) : null;
+      const draft = record ? { text: record.text, savedAt: record.savedAt, stale: record.baseHash !== digest(bytes) } : null;
+      window.webContents.send('open-file', { name: path.basename(filePath), bytes, filePath: resolved, editToken, draft });
     } catch (error) {
       dialog.showErrorBox('Could not open file', `${path.basename(filePath)}: ${error.message}`);
     }
@@ -292,6 +333,10 @@ else {
       } finally { await fs.unlink(temporary).catch(() => {}); }
       const nextToken = token || randomUUID();
       editFiles.set(nextToken, { path: target, hash: digest(bytes) });
+      // A completed save supersedes any recovery copy, including one left against the
+      // old name when Save As moved the document.
+      await deleteDraft(target);
+      if (original && pathKey(original.path) !== pathKey(target)) await deleteDraft(original.path);
       const existing = recentFiles.find(item => pathKey(item.path) === pathKey(target));
       recentFiles = [{ id: existing?.id || randomUUID(), path: target, name: path.basename(target), size: bytes.byteLength }, ...recentFiles.filter(item => pathKey(item.path) !== pathKey(target))].slice(0, 25);
       await saveHistory().catch(() => {});
@@ -306,6 +351,24 @@ else {
       })).response;
     });
     onTrusted('release-edit-file', (_event, token) => editFiles.delete(token));
+    handleTrusted('save-draft', async (_event, { token, text, bom, lineEnding }) => {
+      const original = editFiles.get(token);
+      if (!original) throw new Error('Unknown edit token.');
+      if (typeof text !== 'string' || text.length > 2 * 1024 * 1024) throw new Error('Drafts are limited to 2 MB.');
+      const target = draftFile(original.path);
+      await fs.mkdir(draftsDirectory(), { recursive: true });
+      const record = { baseHash: original.hash, text, bom: Boolean(bom), lineEnding: lineEnding === '\r\n' ? '\r\n' : '\n', savedAt: Date.now() };
+      const temporary = `${target}.${randomUUID()}.tmp`;
+      try {
+        await fs.writeFile(temporary, JSON.stringify(record));
+        await fs.rename(temporary, target);
+      } finally { await fs.unlink(temporary).catch(() => {}); }
+      return true;
+    });
+    onTrusted('discard-draft', (_event, token) => {
+      const original = editFiles.get(token);
+      if (original) deleteDraft(original.path).catch(() => {});
+    });
     onTrusted('release-media', (_event, token) => releaseMedia(token));
     onTrusted('allow-close', () => {
       const window = liveWindow();
@@ -364,6 +427,7 @@ else {
       ] }
     ]));
     desktopReady = true;
+    pruneDrafts().catch(() => {});
     createWindow();
   });
   app.on('window-all-closed', () => { if (!isMac) app.quit(); });

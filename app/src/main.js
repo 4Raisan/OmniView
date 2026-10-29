@@ -31,6 +31,7 @@ import {
 const viewerModules = {
   excel: () => import('./viewers/excelViewer.js'),
   word: () => import('./viewers/wordViewer.js'),
+  presentation: () => import('./viewers/presentationViewer.js'),
   pdf: () => import('./viewers/pdfViewer.js'),
   markdown: () => import('./viewers/markdownViewer.js'),
   code: () => import('./viewers/codeViewer.js'),
@@ -73,6 +74,7 @@ class OmniViewApp {
     this.setupSidebarResize();
     this.bindEvents();
     this.bindTabKeys();
+    this.bindDraftRecovery();
     this.tabsResizeObserver = new ResizeObserver(() => this.fitTabs());
     this.tabsResizeObserver.observe(this.tabsContainer);
     document.addEventListener('selectionchange', () => {
@@ -205,10 +207,10 @@ class OmniViewApp {
     });
     // File.arrayBuffer() resolves asynchronously; preserve native selection order.
     let fileOpenQueue = Promise.resolve();
-    window.desktop?.onFile(({ name, bytes, filePath, editToken }) => {
+    window.desktop?.onFile(({ name, bytes, filePath, editToken, draft }) => {
       // The bytes already crossed IPC; wrapping them in a File would copy them twice more.
       const source = { name, size: bytes.byteLength, type: '' };
-      fileOpenQueue = fileOpenQueue.catch(() => {}).then(() => this.loadFile(source, filePath, editToken, bytes));
+      fileOpenQueue = fileOpenQueue.catch(() => {}).then(() => this.loadFile(source, filePath, editToken, bytes, draft));
     });
     window.desktop?.onMedia(async ({ name, size, filePath, mediaToken, url }) => {
       const existing = this.tabs.find(tab => pathKey(tab.filePath) === pathKey(filePath));
@@ -218,10 +220,12 @@ class OmniViewApp {
     });
     window.desktop?.onRequestClose(async () => {
       for (const tab of this.tabs) if (tab.viewer?.editor && !await tab.viewer.editor.canClose()) { window.desktop.cancelClose(); return; }
+      this.releaseDrafts();
       window.desktop.allowClose();
     });
     window.desktop?.onRequestReload(async () => {
       for (const tab of this.tabs) if (tab.viewer?.editor && !await tab.viewer.editor.canClose()) { window.desktop.cancelReload(); return; }
+      this.releaseDrafts();
       window.desktop.allowReload();
     });
     document.addEventListener('keydown', event => {
@@ -325,7 +329,7 @@ class OmniViewApp {
     });
   }
 
-  async loadFile(file, filePath = null, editToken = null, rawBytes = null) {
+  async loadFile(file, filePath = null, editToken = null, rawBytes = null, draft = null) {
     let type = detectFileType(file.name, file.type);
     let data;
     let editMeta = null;
@@ -364,6 +368,7 @@ class OmniViewApp {
         data: data,
         filePath,
         editMeta,
+        draft,
         objectUrl: (type === FILE_TYPES.IMAGE || type === FILE_TYPES.MEDIA) ? data : null
       });
 
@@ -378,9 +383,9 @@ class OmniViewApp {
     }
   }
 
-  createTab({ name, type, size, data, objectUrl = null, filePath = null, editMeta = null, mediaToken = null }) {
+  createTab({ name, type, size, data, objectUrl = null, filePath = null, editMeta = null, mediaToken = null, draft = null }) {
     const id = 'tab_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-    const newTab = { id, name, type, size, data, objectUrl, filePath, editMeta, mediaToken };
+    const newTab = { id, name, type, size, data, objectUrl, filePath, editMeta, mediaToken, draft };
     this.tabs.push(newTab);
     this.renderTabsList();
     this.activateTab(id);
@@ -404,6 +409,49 @@ class OmniViewApp {
     }, 50);
     this.updateStatus(tab);
     this.updateSidebarDetails(tab);
+    this.updateDraftRecovery(tab);
+  }
+
+  updateDraftRecovery(tab) {
+    const bar = document.getElementById('draft-recovery');
+    if (!bar) return;
+    const draft = tab?.draft;
+    if (!draft || !tab.editMeta?.eligible) { bar.hidden = true; return; }
+    const when = new Date(draft.savedAt).toLocaleString();
+    document.getElementById('draft-recovery-message').textContent = draft.stale
+      ? `Unsaved changes from ${when} were recovered. The file changed on disk since, so review them before saving over it. Restore or discard to resume autosave.`
+      : `Unsaved changes from ${when} were recovered after OmniView closed unexpectedly. Restore or discard to resume autosave.`;
+    bar.hidden = false;
+  }
+
+  bindDraftRecovery() {
+    document.getElementById('btn-draft-restore').onclick = async () => {
+      const tab = this.tabs.find(item => item.id === this.activeTabId);
+      if (!tab?.draft) return;
+      await this.renderActiveDocument(tab);
+      const editor = tab.viewer?.editor;
+      if (!editor) return;
+      const text = tab.draft.text;
+      tab.draft = null;
+      editor.draftPending = false;
+      this.updateDraftRecovery(tab);
+      await editor.restoreDraft(text);
+    };
+    document.getElementById('btn-draft-discard').onclick = () => {
+      const tab = this.tabs.find(item => item.id === this.activeTabId);
+      if (!tab?.draft) return;
+      window.desktop?.discardDraft(tab.viewer?.editor?.meta.token || tab.editMeta?.token);
+      tab.draft = null;
+      if (tab.viewer?.editor) tab.viewer.editor.draftPending = false;
+      this.updateDraftRecovery(tab);
+    };
+  }
+
+  releaseDrafts() {
+    for (const tab of this.tabs) {
+      const token = tab.viewer?.editor?.meta.token || tab.editMeta?.token;
+      if (token) window.desktop?.discardDraft(token);
+    }
   }
 
   async closeTab(tabId) {
@@ -414,7 +462,11 @@ class OmniViewApp {
     if (tab.viewer?.editor && !await tab.viewer.editor.canClose()) return false;
     const currentIndex = this.tabs.indexOf(tab);
     if (currentIndex < 0) return true;
-    window.desktop?.releaseEditFile(tab.viewer?.editor?.meta.token || tab.editMeta?.token);
+    // canClose passed: the work was saved, discarded or never changed, so no recovery
+    // copy should outlive the tab. This must precede releasing the token it needs.
+    const draftToken = tab.viewer?.editor?.meta.token || tab.editMeta?.token;
+    if (draftToken) window.desktop?.discardDraft(draftToken);
+    window.desktop?.releaseEditFile(draftToken);
     if (tab.mediaToken) window.desktop.releaseMedia(tab.mediaToken);
     tab.closed = true;
     tab.viewer?.destroy?.();
@@ -432,6 +484,7 @@ class OmniViewApp {
         this.renderWelcomeScreen();
         this.clearStatus();
         this.clearSidebarDetails();
+        this.updateDraftRecovery(null);
       }
     } else {
       this.renderTabsList();
@@ -560,7 +613,17 @@ class OmniViewApp {
         });
       }
       // Parsed viewers own their state; do not keep an extra original file buffer.
-      if ([FILE_TYPES.EXCEL, FILE_TYPES.WORD, FILE_TYPES.CODE, FILE_TYPES.MARKDOWN, FILE_TYPES.PDF, FILE_TYPES.ZIP].includes(tab.type)) tab.data = null;
+      if ([FILE_TYPES.EXCEL, FILE_TYPES.WORD, FILE_TYPES.PRESENTATION, FILE_TYPES.CODE, FILE_TYPES.MARKDOWN, FILE_TYPES.PDF, FILE_TYPES.ZIP].includes(tab.type)) tab.data = null;
+      if (tab.draft && tab.viewer?.editor) {
+        // A draft identical to the file is not a recovery, it is a leftover.
+        if (tab.draft.text === tab.viewer.rawText.replace(/\r\n/g, '\n')) {
+          window.desktop?.discardDraft(tab.viewer.editor.meta.token);
+          tab.draft = null;
+        } else {
+          tab.viewer.editor.draftPending = true;
+        }
+      }
+      this.updateDraftRecovery(this.activeTabId === tab.id ? tab : this.tabs.find(item => item.id === this.activeTabId));
       if (tab.closed) tab.viewer.destroy?.();
       else if (this.activeTabId !== tab.id) tab.viewer.suspend?.();
     } catch (error) {
@@ -585,6 +648,7 @@ class OmniViewApp {
             <span class="format-pill">.pdf</span>
             <span class="format-pill">.docx</span>
             <span class="format-pill">.doc</span>
+            <span class="format-pill">.pptx</span>
             <span class="format-pill">.xlsx</span>
             <span class="format-pill">.csv</span>
             <span class="format-pill">.md</span>

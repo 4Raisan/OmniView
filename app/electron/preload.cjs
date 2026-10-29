@@ -19,6 +19,8 @@ contextBridge.exposeInMainWorld('desktop', {
   print: () => ipcRenderer.invoke('print'),
   saveFile: (name, bytes) => ipcRenderer.invoke('save-file', { name, bytes }),
   saveText: payload => ipcRenderer.invoke('save-text', payload),
+  saveDraft: payload => ipcRenderer.invoke('save-draft', payload),
+  discardDraft: token => ipcRenderer.send('discard-draft', token),
   confirmEditClose: name => ipcRenderer.invoke('confirm-edit-close', name),
   releaseEditFile: token => ipcRenderer.send('release-edit-file', token),
   releaseMedia: token => ipcRenderer.send('release-media', token),
