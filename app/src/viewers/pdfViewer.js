@@ -34,6 +34,8 @@ export class PdfViewer {
     this.rotation = 0;
     this.rendering = false;
     this.pages = [];
+    this.pageTops = null;
+    this.pageHeights = null;
     this.renderQueue = new Set();
     this.renderGeneration = 0;
     this.findQuery = '';
@@ -165,6 +167,8 @@ export class PdfViewer {
     for (const item of this.pages) item.canvas.width = item.canvas.height = 0;
     this.renderQueue.clear();
     this.pages = [];
+    this.pageTops = null;
+    this.pageHeights = null;
   }
 
   suspend() {
@@ -242,6 +246,8 @@ export class PdfViewer {
         item.width = viewport.width;
         item.height = viewport.height;
         this.sizeSection(item);
+        this.pageTops = null;
+        this.pageHeights = null;
       }
     }
     return item;
@@ -254,6 +260,8 @@ export class PdfViewer {
 
   layoutPages() {
     this.renderGeneration++;
+    this.pageTops = null;
+    this.pageHeights = null;
     this.renderTask?.cancel();
     this.renderQueue.clear();
     for (const item of this.pages) {
@@ -281,38 +289,62 @@ export class PdfViewer {
     this.queueVisiblePages();
   }
 
+  // Measured once per layout, in scroll-content coordinates. Scroll tracking and
+  // visibility then cost arithmetic instead of a forced layout read per page.
+  pageGeometry() {
+    if (!this.pageTops) {
+      const areaTop = this.scrollArea.getBoundingClientRect().top;
+      const scrollTop = this.scrollArea.scrollTop;
+      this.pageTops = [];
+      this.pageHeights = [];
+      for (const item of this.pages) {
+        const rect = item.section.getBoundingClientRect();
+        this.pageTops.push(rect.top - areaTop + scrollTop);
+        this.pageHeights.push(rect.height);
+      }
+    }
+    return this.pageTops;
+  }
+
   trackCurrentPage() {
     if (!this.scrollArea.clientHeight) return;
-    if (this.scrollArea.scrollTop > 0 && this.scrollArea.scrollHeight - this.scrollArea.clientHeight - this.scrollArea.scrollTop <= 2) {
+    const { scrollTop, scrollHeight, clientHeight } = this.scrollArea;
+    if (scrollTop > 0 && scrollHeight - clientHeight - scrollTop <= 2) {
       this.currentPageNum = this.pdfDoc.numPages;
       this.updatePageIndicator();
       return;
     }
     // The page straddling the viewport centre is the current one. A top-edge rule
     // disagrees with scrolling a search match into the middle of the view.
-    const bounds = this.scrollArea.getBoundingClientRect();
-    const middle = bounds.top + bounds.height / 2;
-    let current = 1;
-    for (const item of this.pages) {
-      if (item.section.getBoundingClientRect().top <= middle) current = Number(item.section.dataset.page);
-      else break;
+    const tops = this.pageGeometry();
+    const middle = scrollTop + clientHeight / 2;
+    let low = 0, high = tops.length - 1, current = 0;
+    while (low <= high) {
+      const mid = (low + high) >> 1;
+      if (tops[mid] <= middle) { current = mid; low = mid + 1; } else high = mid - 1;
     }
-    this.currentPageNum = current;
+    this.currentPageNum = current + 1;
     this.updatePageIndicator();
   }
 
   queueVisiblePages() {
     if (!this.scrollArea?.clientHeight || this.destroyed || this.suspended) return;
-    const bounds = this.scrollArea.getBoundingClientRect();
+    const tops = this.pageGeometry();
+    const { scrollTop, clientHeight } = this.scrollArea;
+    const viewTop = scrollTop - 600;
+    const viewBottom = scrollTop + clientHeight + 600;
+    const keepTop = scrollTop - 2000;
+    const keepBottom = scrollTop + clientHeight + 2000;
     for (let index = 0; index < this.pages.length; index++) {
+      const top = tops[index];
+      const bottom = top + this.pageHeights[index];
       const item = this.pages[index];
-      const rect = item.section.getBoundingClientRect();
-      if (rect.bottom >= bounds.top - 600 && rect.top <= bounds.bottom + 600) {
+      if (bottom >= viewTop && top <= viewBottom) {
         if (!item.rendered) this.renderQueue.add(index);
       } else {
         this.renderQueue.delete(index);
         // Release far-away canvases; retain the page-sized placeholder.
-        if (item.rendered && (rect.bottom < bounds.top - 2000 || rect.top > bounds.bottom + 2000)) {
+        if (item.rendered && (bottom < keepTop || top > keepBottom)) {
           item.canvas.width = item.canvas.height = 0;
           item.rendered = false;
           item.section.classList.remove('rendered');
