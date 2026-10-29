@@ -1,4 +1,4 @@
-import { escapeHtml } from '../utils/safeHtml.js';
+import { escapeHtml, sanitizeRenderedDocument } from '../utils/safeHtml.js';
 import * as docx from 'docx-preview';
 import { icons } from '../icons.js';
 
@@ -40,6 +40,10 @@ export class WordViewer {
         ignoreWidth: false, ignoreHeight: false, breakPages: true, useBase64URL: true
       });
 
+      // The document supplied this HTML; strip active content before it stays in the DOM.
+      targetEl.innerHTML = sanitizeRenderedDocument(targetEl.innerHTML);
+      targetEl.querySelectorAll('a').forEach(anchor => { anchor.target = '_blank'; anchor.rel = 'noopener noreferrer'; });
+
       this.extractHeadings(targetEl);
       this.renderToolbar();
     } catch (err) {
@@ -55,7 +59,7 @@ export class WordViewer {
 
   async renderLegacy(arrayBuffer) {
     if (!window.desktop?.readLegacyDoc) throw new Error('Legacy DOC viewing is available in the desktop app.');
-    const sections = await window.desktop.readLegacyDoc(new Uint8Array(arrayBuffer));
+    const sections = await window.desktop.readLegacyDoc(arrayBuffer);
     this.container.innerHTML = '<div class="word-viewer-wrapper fluid"><div class="word-canvas-scale"><article class="legacy-doc-content"></article></div></div>';
     const target = this.container.querySelector('.legacy-doc-content');
     const notice = document.createElement('p');

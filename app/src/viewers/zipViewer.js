@@ -1,7 +1,11 @@
 import { escapeHtml } from '../utils/safeHtml.js';
 import JSZip from 'jszip';
 import { icons } from '../icons.js';
-import { formatFileSize, getFileTypeIcon, detectFileType, downloadBlob } from '../utils/fileHelpers.js';
+import { formatFileSize, getFileTypeIcon, detectFileType, downloadBlob, MAX_DOCUMENT_BYTES } from '../utils/fileHelpers.js';
+
+// A few megabytes of ZIP can declare gigabytes of output. Bound both the row count
+// and any single decompression before allocating it.
+const MAX_LISTED_ENTRIES = 2000;
 
 export class ZipViewer {
   constructor(container, toolbarContainer, onOpenFileCallback) {
@@ -108,6 +112,14 @@ export class ZipViewer {
       return;
     }
 
+    const listed = filtered.slice(0, MAX_LISTED_ENTRIES);
+    if (filtered.length > listed.length) {
+      const notice = document.createElement('p');
+      notice.className = 'zip-limit-notice';
+      notice.textContent = `Showing the first ${MAX_LISTED_ENTRIES} of ${filtered.length} entries. Use the filter to narrow the list.`;
+      wrapper.appendChild(notice);
+    }
+
     const table = document.createElement('table');
     table.className = 'zip-table';
     table.innerHTML = `
@@ -123,7 +135,7 @@ export class ZipViewer {
     `;
 
     const tbody = table.querySelector('tbody');
-    filtered.forEach(item => {
+    listed.forEach(item => {
       const tr = document.createElement('tr');
       const fileType = detectFileType(item.name);
       const icon = item.dir ? icons.fileArchive : getFileTypeIcon(fileType);
@@ -147,22 +159,22 @@ export class ZipViewer {
         const previewBtn = tr.querySelector('.btn-preview');
         if (previewBtn) {
           previewBtn.onclick = async () => {
-            const buf = await item.entry.async('arraybuffer');
-            if (this.onOpenFileCallback) {
-              this.onOpenFileCallback({
-                name: item.name,
-                buffer: buf,
-                size: item.size
-              });
-            }
+            try {
+              this.guardEntrySize(item);
+              const buffer = await item.entry.async('arraybuffer');
+              this.onOpenFileCallback?.({ name: item.name, buffer, size: item.size });
+            } catch (error) { this.showEntryError(error.message); }
           };
         }
 
         const downloadBtn = tr.querySelector('.btn-download');
         if (downloadBtn) {
           downloadBtn.onclick = async () => {
-            const blob = await item.entry.async('blob');
-            downloadBlob(blob, item.name);
+            try {
+              this.guardEntrySize(item);
+              const blob = await item.entry.async('blob');
+              downloadBlob(blob, item.name);
+            } catch (error) { this.showEntryError(error.message); }
           };
         }
       }
@@ -172,5 +184,28 @@ export class ZipViewer {
 
     wrapper.appendChild(table);
     this.container.appendChild(wrapper);
+  }
+
+  guardEntrySize(item) {
+    if (item.size > MAX_DOCUMENT_BYTES) {
+      throw new Error(`"${item.name}" expands to ${formatFileSize(item.size)}, past the 256 MB limit. Extract it with an archive tool instead.`);
+    }
+  }
+
+  showEntryError(message) {
+    this.toolbarContainer.querySelector('.zip-entry-error')?.remove();
+    const error = document.createElement('span');
+    error.className = 'edit-error zip-entry-error';
+    error.setAttribute('role', 'status');
+    error.textContent = message;
+    error.title = message;
+    this.toolbarContainer.appendChild(error);
+  }
+
+  destroy() {
+    this.zip = null;
+    this.entries = [];
+    this.container.replaceChildren();
+    this.toolbarContainer.replaceChildren();
   }
 }
