@@ -1,0 +1,85 @@
+name: Bug report
+description: Something OmniView does wrong, crashes on, or renders incorrectly
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Security problem?** Do not file it here. See [SECURITY.md](../blob/main/SECURITY.md)
+        and use private vulnerability reporting instead.
+
+        Please do not attach real personal or confidential documents. A minimal
+        synthetic file that reproduces the problem is far more useful.
+  - type: input
+    id: version
+    attributes:
+      label: OmniView version
+      description: Help → About OmniView
+      placeholder: "1.10.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Linux (AppImage)
+        - Linux (Debian package)
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install it?
+      options:
+        - Windows installer
+        - Windows portable EXE
+        - macOS DMG
+        - Linux AppImage
+        - Linux .deb
+        - Built from source
+    validations:
+      required: true
+  - type: input
+    id: filetype
+    attributes:
+      label: File type and size
+      description: Extension and approximate size. Do not paste the file's contents.
+      placeholder: ".xlsx, about 4 MB"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead?
+      description: Include the exact error text if one was shown.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open …
+        2. Click …
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: sample
+    attributes:
+      label: Minimal synthetic sample
+      description: >
+        If you can, attach a small file you created yourself that triggers the
+        same behaviour. A script that generates it is even better.
+    validations:
+      required: false

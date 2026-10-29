@@ -22,6 +22,8 @@ The maintainer is preparing an application for the [SignPath Foundation open-sou
 5. Run the packaged desktop checks on the signed app. Calculate release checksums after all signing is complete. Do not modify signed files afterward.
 6. Keep unsigned builds explicitly labelled. Do not silently fall back to unsigned files after a production signing failure, and do not replace already-published release bytes without a new version.
 
-`tooling/scripts/verify-windows-signatures.ps1` validates named files against the expected certificate thumbprint. It is a verification gate, not a signing service. It cannot establish publisher reputation or guarantee that every Windows configuration will suppress SmartScreen.
+`tooling/scripts/verify-windows-signatures.ps1` validates named files against the expected certificate thumbprint (compared case-insensitively). It is a verification step, not a signing service. It cannot establish publisher reputation or guarantee that every Windows configuration will suppress SmartScreen.
+
+The release workflow invokes it on the Windows leg **only when the repository variable `WINDOWS_SIGNING_THUMBPRINT` is set**. While Windows builds remain unsigned that variable is unset, so the step is skipped and unsigned releases still publish — items 2 and 4 above are therefore not yet enforced. Setting the variable is what turns this into a gate; it must be done together with enabling signing, not before.
 
 See the [privacy policy](PRIVACY.md). View SignPath's [program terms](https://signpath.org/terms) and [GitHub integration requirements](https://docs.signpath.io/trusted-build-systems/github) before enrollment. Installation of their GitHub App, new token access and acceptance of their terms require the maintainer's explicit review.

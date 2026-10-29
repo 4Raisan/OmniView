@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ideas and feedback
+    url: https://github.com/4Raisan/OmniView/discussions/5
+    about: Longer discussion, questions and general feedback belong in Discussions.
+  - name: Report a security vulnerability
+    url: https://github.com/4Raisan/OmniView/security
+    about: Use private vulnerability reporting, not a public issue. See SECURITY.md.
+  - name: Installation and troubleshooting
+    url: https://github.com/4Raisan/OmniView/blob/main/docs/DEVELOPMENT.md
+    about: SmartScreen, Gatekeeper, AppImage permissions and common errors are documented here.

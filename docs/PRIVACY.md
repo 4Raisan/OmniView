@@ -8,6 +8,16 @@ From 1.9.0, the desktop app contacts GitHub's public latest-release API at start
 
 GitHub operates that endpoint under its [privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement). Choosing View release, Star on GitHub or another Help link opens GitHub in the user's normal browser, where GitHub's policies and the browser's settings apply.
 
+## Links inside documents
+
+OmniView blocks documents from loading external images, stylesheets, scripts and fonts, so opening a file contacts no server. **Clicking a hyperlink inside a Markdown or DOCX document is an explicit exception:** it opens that URL in the user's normal browser, which reveals the connecting IP address and the fact that the link was followed to whoever operates that site. The URL is chosen by the document's author, not by OmniView, and is not restricted to OmniView's repository. Do not click links in documents from untrusted sources.
+
+## What is stored on the device
+
+Recent history is up to 25 entries of full file path, filename, byte size and a random identifier, written to `recent-files.json` in Electron's per-user data directory (`%APPDATA%/OmniView` on Windows, `~/.config/OmniView` on Linux, `~/Library/Application Support/OmniView` on macOS). Theme, text size and sidebar width are stored in the app's local storage. No document contents are copied there.
+
+**Clear History** (the × beside Recent Files in the sidebar) empties that list and rewrites `recent-files.json`. It does not delete the files themselves. Uninstalling leaves local history and preferences in place unless removed manually.
+
 ## Local installation
 
 The Windows installer creates per-user app files, shortcuts and optional PDF Open with registrations. It does not change the protected PDF default. Use Windows Settings → Apps → Installed apps → OmniView → Uninstall to remove the installed application. Local history and preferences may remain for reinstall compatibility. The portable EXE does not install the application, although it can retain local preferences.

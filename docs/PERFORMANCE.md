@@ -1,5 +1,14 @@
 # Performance — OmniView
 
+> **Currency.** The newest memory and speed measurement below is **1.7.0, taken
+> 2026-10-11**. 1.8.0 added package sizes only; **1.9.0 and 1.10.0 have not been
+> re-benchmarked.** Changes since 1.7.0 that these numbers do not reflect include
+> the isolated legacy DOC worker (128 MB heap, two concurrent readers), the PDF
+> text layer and on-demand page fetching, and the removal of redundant document
+> buffer copies. Treat the figures as a historical baseline, not a description of
+> the current release. Re-run the steps under [Reproduce](#reproduce) against a
+> packaged build of the current version before quoting them.
+
 OmniView was previously named Multi-Viewer. The comparison below is the preserved historical 1.5.0/1.6.0 benchmark; it is not relabeled as a new 1.7.0 measurement.
 
 Measured on 2026-10-11 using packaged Windows x64 builds 1.5.0 and 1.6.0. Results below are medians of **three fresh-profile runs per build** on the same Windows machine (kernel build 10.0.26300): Intel Core i7-13620H, 16 logical CPUs, 15.7 GiB usable RAM. [Raw measurements](benchmark-results.json) include every run and process sample.
@@ -75,9 +84,21 @@ Run on Windows after installing dependencies and building an unpacked executable
 npm ci
 npm run build
 npx electron-builder --win --x64 --dir
-node tooling/scripts/benchmark.cjs "release/win-unpacked/OmniView.exe" "benchmark-results.json" 3
-node tooling/scripts/benchmark.cjs "release/win-unpacked/OmniView.exe" "editing-results.json" 3 editing
+node tooling/scripts/benchmark.cjs "release/win-unpacked/OmniView.exe" "$env:TEMP/omniview-benchmark.json" 3
+node tooling/scripts/benchmark.cjs "release/win-unpacked/OmniView.exe" "$env:TEMP/omniview-editing.json" 3 editing
 ```
+
+The script writes a **flat report** — `{ date, executableVersion, rows }` — for one
+build and one workload. It does not produce the committed
+[`benchmark-results.json`](benchmark-results.json), which is a hand-merged archive
+keyed by version and workload (`baseline`, `updated`, `editing`, `omniview1_7`,
+`releaseArtifacts`, `crossPlatformRelease1_8`). To publish a new measurement, run
+the script, then add its output to that archive under a new key and write the
+medians into a new version section here. Package sizes, SHA-256 digests and check
+counts in the archive are entered by hand, not emitted by the script.
+
+Output paths above point at the temp directory because `benchmark-results.json`
+and `editing-results.json` at the repository root are gitignored.
 
 Use the same commands with a preserved 1.5.0 unpacked executable for the baseline. Portable extraction and installer time are excluded from startup measurements. Workloads use 12 synthetic 2,500-line Python files, 200 Markdown paragraphs and 64 MiB PCM audio; audio cases retain the text and Markdown tabs. Snapshots follow a 500 ms settling interval. CPU derives from cumulative process CPU time and is divided by logical CPU count. Profiles and input fixtures are temporary and do not touch normal app history.
 

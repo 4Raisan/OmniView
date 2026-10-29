@@ -14,6 +14,45 @@ The root keeps README and the package manifest/lockfile. Hidden Git configuratio
 
 `app/electron/main.cjs` manages native files, safe saves, printing, menus, OS file-open events and recent history. The isolated preload exposes only the desktop API. `app/src/` manages tabs and loads individual readers when needed. Files are parsed locally; external document resources are blocked. History stores at most 25 paths and metadata, never document copies.
 
+## Install a download
+
+**Windows.** The installer is per-user and needs no administrator rights. Builds are unsigned, so SmartScreen shows "Windows protected your PC" — choose **More info → Run anyway**. To verify a download first, compare its SHA256 against `SHA256SUMS.txt` on the release page:
+
+```powershell
+Get-FileHash .\OmniView-Setup-1.10.0-x64.exe -Algorithm SHA256
+```
+
+The portable EXE needs no installation; run it from any writable folder. Uninstall the installed copy through Settings → Apps → Installed apps → OmniView.
+
+**macOS.** Builds use an ad-hoc signature and are not notarized, so Gatekeeper blocks the first launch. Open the DMG, drag OmniView to Applications, then either right-click the app and choose **Open**, or clear the quarantine flag:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/OmniView.app
+```
+
+If it is still blocked, approve it in System Settings → Privacy & Security. Delete the app from Applications to uninstall.
+
+**Linux.** Make the AppImage executable and run it; it needs FUSE, which some minimal or container systems lack:
+
+```sh
+chmod +x OmniView-1.10.0-linux-x86_64.AppImage
+./OmniView-1.10.0-linux-x86_64.AppImage
+```
+
+On Debian/Ubuntu use the package instead: `sudo apt install ./OmniView-1.10.0-linux-amd64.deb`, and remove it with `sudo apt remove omniview`.
+
+**All platforms.** Verify any download against `SHA256SUMS.txt` before running it. Release artifacts also carry a GitHub build-provenance attestation, checkable with `gh attestation verify <file> --repo 4Raisan/OmniView`.
+
+## Troubleshooting
+
+- **A file opens as garbled text or is refused.** OmniView picks a viewer from the extension, then from the file's header bytes. Formats it cannot render (MKV, AVI, RAR, 7-Zip, executables, PPTX) are named in the error rather than shown as text. Convert to a supported format.
+- **A PDF asks for a password.** Enter it in the viewer. Cancelling leaves the document unopened; nothing is sent anywhere.
+- **A PDF page is blank or slow.** Pages render as they approach the viewport. Very large pages are rasterized within a fixed pixel budget, so extreme zoom can look soft.
+- **A spreadsheet shows fewer rows than expected.** Sheets are read up to 200,000 rows × 512 columns; a toolbar badge says when the range was limited.
+- **A ZIP entry will not preview.** Entries declaring more than 256 MB uncompressed are refused before decompression. Extract them with an archive tool.
+- **Media will not play.** The player reports whether the container/codec is unsupported or the file is damaged. Convert to MP4 (H.264/AAC), WebM, MP3, WAV, OGG, M4A or FLAC.
+- **Saving reports an external change.** Another program modified the file since it was opened. Use Save As to keep both versions.
+
 ## Package for your platform
 
 ```sh
@@ -33,15 +72,21 @@ See [editing details](EDITING.md) and [performance measurements](PERFORMANCE.md)
 
 ## Checks and releases
 
-`npm test` runs desktop checks after `npm run build`. Linux tests need a desktop display; CI uses Xvfb. The isolated Linux CI runner disables Chromium sandboxing only for automated tests; user builds keep the renderer sandbox enabled.
+`npm test` runs the `node:test` unit checks (legacy DOC parsing and the update checker, no build needed) and then the Playwright desktop checks, which require `npm run build` first. Linux tests need a desktop display; CI uses Xvfb. The isolated Linux CI runner disables Chromium sandboxing only for automated tests; user builds keep the renderer sandbox enabled.
 
-CI checks Windows, Linux, Apple Silicon and Intel macOS. The manual **Build release downloads** workflow packages each platform, checks its executable, and collects downloads plus SHA256SUMS.txt in a draft release. It refuses to replace an already published version. Review and publish the draft after all targets pass.
+Desktop checks share one application instance and run in file order, so a failure can cascade into later tests. `tooling/tests/desktop.spec.cjs` covers the original surface; `tooling/tests/fixes.spec.cjs` covers format sniffing, sanitizing, decompression budgets, PDF text/search/passwords, spreadsheet formatting, tab keyboard access and window lifecycle. CI uploads `tooling/test-results/` traces when a run fails.
+
+CI checks Windows, Linux, Apple Silicon and Intel macOS, and audits shipped dependencies with `npm audit --omit=dev --audit-level=high`. The manual **Build release downloads** workflow first checks the ref and version, then packages each platform, checks its executable, attests build provenance and collects downloads plus SHA256SUMS.txt in a draft release. It refuses to replace an already published version. Review and publish the draft after all targets pass.
+
+The packaged smoke test runs the `*-unpacked` executable, not the installer, portable EXE, DMG, AppImage or .deb. Installer registration and first-run behaviour still need a manual check on a clean machine before publishing.
 
 Generated dependencies, `app/dist/`, test output and `release/` stay ignored by Git. The SheetJS archive in `tooling/vendor/` is a required pinned dependency, not a backup. Application identity and preference keys remain compatible with earlier OmniView/Multi-Viewer installs.
 
 Each release also includes a source ZIP generated from the exact checked commit, including hidden workflow files and the pinned vendor archive. It excludes ignored local files, credentials, node_modules and generated build output. Its checksum is included in SHA256SUMS.txt.
 
-The main process checks the fixed GitHub latest-release API with an eight-second timeout. Results are cached in memory for one hour; the Help menu forces a fresh check. Version comparison is numeric and accepts stable major.minor.patch tags only. External update and support links are fixed to OmniView's repository; document network blocking remains in place.
+The main process checks the fixed GitHub latest-release API with an eight-second timeout. Results are cached in memory for one hour; the Help menu forces a fresh check. Version comparison is numeric and accepts stable major.minor.patch tags only. Update, Help and support links are fixed to OmniView's repository.
+
+Hyperlinks **inside a document** are different: Markdown and DOCX anchors are opened with `shell.openExternal`, so clicking one opens the user's normal browser at whatever URL the document author chose. Subresource requests (images, stylesheets, scripts, fonts) from documents are blocked, so a document cannot contact a server on its own; only an explicit click can. See [PRIVACY.md](PRIVACY.md).
 
 ## Legacy Word DOC
 

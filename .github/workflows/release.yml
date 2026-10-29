@@ -1,10 +1,31 @@
 name: Build release downloads
 on:
   workflow_dispatch:
+# Build jobs run hundreds of npm lifecycle scripts; only publishing needs write.
 permissions:
-  contents: write
+  contents: read
 jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Check the ref and version before spending four builds
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if [ "$GITHUB_REF" != 'refs/heads/main' ]; then
+            echo "Releases must be dispatched from main, not $GITHUB_REF."
+            exit 1
+          fi
+          tag="v$(node -p "require('./package.json').version")"
+          if gh release view "$tag" --json isDraft --jq .isDraft 2>/dev/null | grep -qx false; then
+            echo "Refusing to replace published release $tag. Bump the version first."
+            exit 1
+          fi
   build:
+    needs: preflight
     strategy:
       fail-fast: false
       matrix:
@@ -19,7 +40,7 @@ jobs:
             arch: x64
             build: --linux AppImage deb --x64
             executable: release/linux-unpacked/OmniView
-          - os: macos-14
+          - os: macos-15
             platform: mac
             arch: arm64
             build: --mac dmg --arm64
@@ -34,17 +55,34 @@ jobs:
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
+      - name: Cache Electron binary
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cache/electron
+            ~/Library/Caches/electron
+            ~/AppData/Local/electron/Cache
+          key: electron-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - name: Linux desktop libraries
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y xvfb libgtk-3-0 libnss3 libgbm1 libasound2t64
       - run: npm ci
       - run: npm run build
       - run: npx electron-builder ${{ matrix.build }} --publish never
+      # Activates only once a signing certificate is configured; unsigned builds
+      # are still the documented default and must not fail here.
+      - name: Verify Windows signatures
+        if: runner.os == 'Windows' && vars.WINDOWS_SIGNING_THUMBPRINT != ''
+        shell: pwsh
+        env:
+          EXPECTED_THUMBPRINT: ${{ vars.WINDOWS_SIGNING_THUMBPRINT }}
+        run: |
+          ./tooling/scripts/verify-windows-signatures.ps1 -Files (Get-ChildItem release/*.exe).FullName -ExpectedThumbprint $env:EXPECTED_THUMBPRINT
       - name: Check packaged desktop app
         if: runner.os != 'Linux'
         run: npm test
@@ -55,7 +93,15 @@ jobs:
         run: xvfb-run -a npm test
         env:
           MULTIVIEWER_EXECUTABLE: ${{ github.workspace }}/${{ matrix.executable }}
-      - uses: actions/upload-artifact@v4
+      - name: Upload failure traces
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: playwright-traces-${{ matrix.platform }}-${{ matrix.arch }}
+          path: tooling/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: downloads-${{ matrix.platform }}-${{ matrix.arch }}
           path: |
@@ -67,14 +113,19 @@ jobs:
   upload:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: downloads-*
           path: release
           merge-multiple: true
-      - name: Upload checked downloads to a new draft
+      - name: Build the source bundle and draft release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -101,4 +152,21 @@ jobs:
           fi
           gh release edit "$tag" --target "$GITHUB_SHA"
           (cd release && sha256sum *.exe *.AppImage *.deb *.dmg *.zip > SHA256SUMS.txt)
+      # Checksums served beside the binaries prove integrity, not origin.
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45 # v2
+        with:
+          subject-path: |
+            release/*.exe
+            release/*.AppImage
+            release/*.deb
+            release/*.dmg
+            release/*.zip
+      - name: Publish the checked downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          tag="v$(node -p "require('./package.json').version")"
           gh release upload "$tag" release/* --clobber

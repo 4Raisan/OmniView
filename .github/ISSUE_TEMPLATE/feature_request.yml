@@ -1,0 +1,56 @@
+name: Feature request
+description: Suggest a format, capability or improvement
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideas and longer discussion are also welcome in
+        [Discussions](https://github.com/4Raisan/OmniView/discussions/5).
+
+        OmniView is deliberately small and dependency-light. A request is much
+        easier to accept if it needs no new runtime dependency, or if the
+        dependency is well maintained and clearly justified.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Describe the task, not just the feature. What file or workflow is involved?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like OmniView to do?
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind of request
+      options:
+        - New file format
+        - Improvement to an existing viewer
+        - Editing
+        - Performance or memory use
+        - Accessibility or keyboard use
+        - Packaging or installation
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What do you do today instead?
+      description: Another tool, a conversion step, or nothing. This helps judge how much the gap matters.
+    validations:
+      required: false
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: I checked the supported-format list in README.md and this is not already covered
+          required: true
+        - label: This keeps documents local — it does not require uploading file contents to a service
+          required: true

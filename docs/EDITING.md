@@ -1,8 +1,14 @@
-# Text editing in OmniView 1.7.0
+# Text editing in OmniView
 
 TXT, README/Markdown, Python and other valid UTF-8 text/code files up to **2 MB** support Edit, Preview, Save and Save As. Other formats remain view-only. Ctrl+S saves; Ctrl+Shift+S opens Save As. The app uses a native text area, without a heavyweight editor dependency or syntax parsing on each keystroke.
 
-Drafts stay in their tabs. Closing, refreshing or quitting offers save, discard or cancel. Saving preserves UTF-8 BOM and CRLF/LF line endings, checks whether the original changed externally, and writes via a temporary file. A conflict or cancelled save retains the draft. Undo/redo belongs to the current text-area editing session; switching back to Preview ends that session.
+UTF-16 files (with a BOM) are decoded and shown read-only: saving them would silently re-encode the file as UTF-8, so Edit stays disabled. Files that are not valid UTF-8 are shown with replacement characters and are also read-only.
+
+Drafts stay in their tabs. Closing, refreshing or quitting offers save, discard or cancel. Saving preserves UTF-8 BOM and CRLF/LF line endings, checks whether the original changed externally, and writes via a temporary file that is flushed to disk before it is renamed over the original. A conflict or cancelled save retains the draft. Undo/redo belongs to the current text-area editing session; switching back to Preview ends that session.
+
+Because the save replaces the file by rename, Windows ACLs, alternate data streams and the original creation timestamp are not carried over, and cloud-sync placeholder files may be rehydrated. Keep authoritative copies under version control or a backup if those attributes matter.
+
+A file opened from inside a ZIP has no path on disk, so Save always becomes Save As and writes a new file; the archive itself is never modified. Its BOM and line endings are preserved in that new file.
 
 ## Markdown
 
