@@ -3,6 +3,9 @@ const path = require('node:path');
 const fs = require('node:fs/promises');
 const os = require('node:os');
 const { createHash } = require('node:crypto');
+const { execFile } = require('node:child_process');
+const { promisify } = require('node:util');
+const execFileAsync = promisify(execFile);
 const JSZip = require('jszip');
 const XLSX = require('xlsx');
 
@@ -264,6 +267,98 @@ test('UTF-16 text is decoded rather than shown as replacement characters', async
   await closeActiveTab();
 });
 
+test('syntax highlighting survives multi-line comments without losing text', async () => {
+  const source = '/* block comment\n   still comment\n   end */\nvalue = `template\nliteral`';
+  await open('multiline.js', source, 'text/javascript');
+  const rows = page.locator('.code-line');
+  await expect(rows).toHaveCount(5);
+
+  // Per-line highlighting used to leave lines 2 and 3 of the comment unstyled.
+  for (const index of [0, 1, 2]) {
+    await expect(rows.nth(index).locator('.hljs-comment')).toHaveCount(1);
+  }
+  await expect(rows.nth(3).locator('.hljs-string')).toHaveCount(1);
+  await expect(rows.nth(4).locator('.hljs-string')).toHaveCount(1);
+
+  // Splitting must not drop, duplicate or reorder a single character.
+  const rendered = await page.locator('.code-block').evaluate(block =>
+    [...block.querySelectorAll('.line-code')].map(node => node.textContent).join('\n'));
+  expect(rendered).toBe(source);
+
+  // Every line's spans must be balanced, or the browser silently re-parents them.
+  const unbalanced = await page.locator('.code-block').evaluate(block =>
+    [...block.querySelectorAll('.line-code')].filter(node => {
+      const html = node.innerHTML;
+      return (html.match(/<span/g) || []).length !== (html.match(/<\/span>/g) || []).length;
+    }).length);
+  expect(unbalanced).toBe(0);
+  await closeActiveTab();
+});
+
+test('a large text file renders in chunks and search still counts the whole file', async () => {
+  const total = 6000;
+  const lines = Array.from({ length: total }, (_, index) => `line ${index + 1} filler`);
+  lines[2999] = 'line 3000 NEEDLE';
+  await open('big.log', lines.join('\n'), 'text/plain');
+
+  // Only the first chunk exists, so opening the file is not 18,000 DOM nodes at once.
+  await expect(page.locator('.code-line')).toHaveCount(1200);
+  await expect(page.locator('.code-rendered-count')).toHaveText('Showing first 1,200 of 6,000 lines');
+
+  const input = page.locator('.toolbar-search input');
+  await input.fill('NEEDLE');
+  // The only match is far past the rendered window; the count must still be right.
+  await expect(page.locator('.code-find-count')).toHaveText('1 matching line');
+  await expect(page.locator('.code-line.has-match')).toHaveCount(0);
+
+  await page.locator('.code-find-next').click();
+  await expect(page.locator('.code-find-count')).toHaveText('1 / 1');
+  const current = page.locator('.code-line.current-match');
+  await expect(current).toHaveCount(1);
+  await expect(current.locator('.line-num')).toHaveText('3000');
+  await expect(current.locator('mark.search-match')).toHaveText('NEEDLE');
+  // Reaching the match built the lines in front of it, not the whole file.
+  const afterJump = await page.locator('.code-line').count();
+  expect(afterJump).toBeGreaterThanOrEqual(3000);
+  expect(afterJump).toBeLessThan(total);
+
+  // Each scroll to the end adds one chunk, so reaching the last line takes repeated
+  // scrolling rather than one pre-built document.
+  const scroller = page.locator('.code-viewer-container');
+  await expect.poll(async () => {
+    await scroller.evaluate(node => { node.scrollTop = node.scrollHeight; });
+    return page.locator('.code-line').count();
+  }).toBe(total);
+  await expect(page.locator('.code-rendered-count')).toBeHidden();
+
+  await input.fill('');
+  await expect(page.locator('mark.search-match')).toHaveCount(0);
+  await expect(page.locator('.code-find-nav')).toBeHidden();
+  await closeActiveTab();
+});
+
+test('printing a chunked text file renders every line first', async () => {
+  const lines = Array.from({ length: 4000 }, (_, index) => `print line ${index + 1}`);
+  await open('print-me.log', lines.join('\n'), 'text/plain');
+  await expect(page.locator('.code-line')).toHaveCount(1200);
+
+  await application.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0].webContents.print = (_options, callback) => callback(true);
+  });
+  try {
+    await page.keyboard.press('Control+p');
+    // A print dialog that only saw the first chunk would silently drop 2,800 lines.
+    await expect(page.locator('.code-line')).toHaveCount(4000);
+    await expect(page.locator('.code-rendered-count')).toBeHidden();
+    await expect(page.locator('.line-code').last()).toHaveText('print line 4000');
+  } finally {
+    await application.evaluate(({ BrowserWindow }) => {
+      delete BrowserWindow.getAllWindows()[0].webContents.print;
+    });
+  }
+  await closeActiveTab();
+});
+
 test('DOCX keeps its layout styles but loses injected active content', async () => {
   const zip = new JSZip();
   zip.file('[Content_Types].xml', '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
@@ -286,6 +381,105 @@ test('DOCX keeps its layout styles but loses injected active content', async () 
   expect(styled.text).toContain('click me');
   expect(styled.anchors.every(rel => rel.includes('noopener'))).toBe(true);
   expect(await page.evaluate(() => window.pwned)).toBeUndefined();
+  await closeActiveTab();
+});
+
+// ------------------------------------------------------------ PPTX helpers
+
+const PNG_1PX = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+const REL_NS = 'xmlns="http://schemas.openxmlformats.org/package/2006/relationships"';
+const SLIDE_NS = 'xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
+
+const shape = (placeholder, paragraphs) =>
+  `<p:sp><p:nvSpPr><p:cNvPr id="1" name="Shape"/><p:cNvSpPr/><p:nvPr>${placeholder ? `<p:ph type="${placeholder}"/>` : ''}</p:nvPr></p:nvSpPr><p:spPr/><p:txBody><a:bodyPr/>${paragraphs.map(text => `<a:p><a:r><a:t>${text}</a:t></a:r></a:p>`).join('')}</p:txBody></p:sp>`;
+
+async function buildPptx() {
+  const zip = new JSZip();
+  zip.file('[Content_Types].xml', `<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/></Types>`);
+  zip.file('_rels/.rels', `<?xml version="1.0"?><Relationships ${REL_NS}><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/></Relationships>`);
+  zip.file('ppt/presentation.xml', `<?xml version="1.0"?><p:presentation ${SLIDE_NS}><p:sldIdLst><p:sldId id="256" r:id="rId1"/><p:sldId id="257" r:id="rId2"/></p:sldIdLst><p:sldSz cx="12192000" cy="6858000"/></p:presentation>`);
+  zip.file('ppt/_rels/presentation.xml.rels', `<?xml version="1.0"?><Relationships ${REL_NS}><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide2.xml"/></Relationships>`);
+
+  // A grouped shape must be flattened in document order, and markup inside a text
+  // run must stay text rather than becoming an element.
+  const table = '<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="9" name="Table"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr><a:graphic><a:graphicData><a:tbl><a:tr><a:tc><a:txBody><a:p><a:r><a:t>Region</a:t></a:r></a:p></a:txBody></a:tc><a:tc><a:txBody><a:p><a:r><a:t>Count</a:t></a:r></a:p></a:txBody></a:tc></a:tr><a:tr><a:tc><a:txBody><a:p><a:r><a:t>North</a:t></a:r></a:p></a:txBody></a:tc><a:tc><a:txBody><a:p><a:r><a:t>12</a:t></a:r></a:p></a:txBody></a:tc></a:tr></a:tbl></a:graphicData></a:graphic></p:graphicFrame>';
+  const picture = '<p:pic><p:nvPicPr><p:cNvPr id="10" name="Quarterly chart"/><p:cNvPicPr/><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="rIdImg"/><a:stretch/></p:blipFill><p:spPr/></p:pic>';
+  zip.file('ppt/slides/slide1.xml', `<?xml version="1.0"?><p:sld ${SLIDE_NS}><p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="0" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>${shape('ctrTitle', ['Quarterly review'])}<p:grpSp><p:nvGrpSpPr><p:cNvPr id="20" name="Group"/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>${shape('body', ['Revenue grew', '&lt;img src=x onerror=window.pptxPwned=true&gt;'])}</p:grpSp>${table}${picture}</p:spTree></p:cSld></p:sld>`);
+  zip.file('ppt/slides/slide2.xml', `<?xml version="1.0"?><p:sld ${SLIDE_NS}><p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="0" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>${shape('title', ['Next steps'])}</p:spTree></p:cSld></p:sld>`);
+  zip.file('ppt/slides/_rels/slide1.xml.rels', `<?xml version="1.0"?><Relationships ${REL_NS}><Relationship Id="rIdImg" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image1.png"/><Relationship Id="rIdNotes" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide" Target="../notesSlides/notesSlide1.xml"/></Relationships>`);
+  zip.file('ppt/media/image1.png', PNG_1PX);
+  zip.file('ppt/notesSlides/notesSlide1.xml', `<?xml version="1.0"?><p:notes ${SLIDE_NS}><p:cSld><p:spTree>${shape('body', ['Mention the hiring plan'])}${shape('sldNum', ['1'])}</p:spTree></p:cSld></p:notes>`);
+  return zip.generateAsync({ type: 'nodebuffer' });
+}
+
+test('PPTX shows slide text, tables, images and notes in shape order', async () => {
+  await open('review.pptx', await buildPptx());
+  const slide = page.locator('.pptx-slide');
+  await expect(slide).toBeVisible();
+  await expect(slide.locator('.pptx-title')).toHaveText('Quarterly review');
+  await expect(page.locator('#status-type')).toHaveText('PRESENTATION');
+
+  // Shape order: title, grouped body, table, picture, notes.
+  const order = await slide.evaluate(card => [...card.children].map(node => node.className || node.tagName));
+  expect(order).toEqual(['legacy-doc-notice', 'pptx-title', 'pptx-body', 'pptx-table', 'pptx-image', 'pptx-notes']);
+
+  const cells = await slide.locator('.pptx-table td').allTextContents();
+  expect(cells).toEqual(['Region', 'Count', 'North', '12']);
+  const image = slide.locator('.pptx-image');
+  await expect(image).toHaveAttribute('alt', 'Quarterly chart');
+  await expect.poll(() => image.evaluate(node => node.naturalWidth)).toBe(1);
+
+  await slide.locator('.pptx-notes summary').click();
+  const notes = await slide.locator('.pptx-notes pre').textContent();
+  // The slide-number placeholder is chrome, not a note.
+  expect(notes).toBe('Mention the hiring plan');
+
+  // Slide text is untrusted: markup inside a run must never become an element.
+  expect(await slide.locator('.pptx-body').textContent()).toContain('<img src=x onerror=window.pptxPwned=true>');
+  expect(await slide.locator('.pptx-body img').count()).toBe(0);
+  expect(await page.evaluate(() => window.pptxPwned)).toBeUndefined();
+});
+
+test('PPTX navigation moves between slides and stops at both ends', async () => {
+  const indicator = page.locator('#pptx-slide-input');
+  await expect(indicator).toHaveValue('1');
+  await expect(page.locator('#pptx-prev')).toBeDisabled();
+
+  await page.locator('#pptx-next').click();
+  await expect(page.locator('.pptx-title')).toHaveText('Next steps');
+  await expect(indicator).toHaveValue('2');
+  await expect(page.locator('#pptx-next')).toBeDisabled();
+  // Slide 2 has no picture; slide 1's object URL must not keep the image alive.
+  await expect(page.locator('.pptx-image')).toHaveCount(0);
+
+  await indicator.fill('1');
+  await indicator.press('Enter');
+  await expect(page.locator('.pptx-title')).toHaveText('Quarterly review');
+  await expect(page.locator('.pptx-image')).toHaveCount(1);
+
+  // Switching away releases the slide, switching back rebuilds the same one.
+  await open('notes.txt', 'side note', 'text/plain');
+  await page.locator('.file-tab').first().click();
+  await expect(page.locator('.pptx-title')).toHaveText('Quarterly review');
+  await expect(page.locator('.pptx-image')).toHaveCount(1);
+  await expect.poll(() => page.locator('.pptx-image').evaluate(node => node.naturalWidth)).toBe(1);
+  await closeActiveTab();
+  await closeActiveTab();
+});
+
+test('legacy binary PPT is refused with a conversion hint', async () => {
+  const ole = Buffer.concat([Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]), Buffer.alloc(512)]);
+  await open('legacy.ppt', ole);
+  await expect(page.locator('.viewer-error')).toContainText('Legacy binary .ppt is not supported');
+  await expect(page.locator('.viewer-error')).toContainText('Convert it to .pptx');
+  await closeActiveTab();
+});
+
+test('a ZIP renamed to PPTX reports the missing presentation part', async () => {
+  const zip = new JSZip();
+  zip.file('readme.txt', 'not a deck');
+  await open('fake.pptx', await zip.generateAsync({ type: 'nodebuffer' }));
+  await expect(page.locator('.viewer-error')).toContainText('ppt/presentation.xml is missing');
   await closeActiveTab();
 });
 
@@ -417,6 +611,89 @@ test('macOS recreates the window for a second launch after the last one closes',
   await expect.poll(() => application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1);
   page = await application.firstWindow();
   await page.waitForSelector('#btn-hero-browse');
+});
+
+// A real crash, not a graceful close: the draft has to survive the process dying.
+test('a crash keeps an unsaved draft that the next launch offers to restore', async () => {
+  test.setTimeout(120000);
+  const folder = await fs.mkdtemp(path.join(os.tmpdir(), 'omniview-draft-'));
+  const target = path.join(folder, 'notes.txt');
+  await fs.writeFile(target, 'first line\n');
+  const draftsDir = path.join(testProfile, 'drafts');
+  const draftCount = () => fs.readdir(draftsDir).then(names => names.filter(name => name.endsWith('.json')).length, () => 0);
+
+  const launch = async (expected = 'first line') => {
+    application = await electron.launch(process.env.MULTIVIEWER_EXECUTABLE
+      ? { executablePath: process.env.MULTIVIEWER_EXECUTABLE, args: [...ciArgs, `--user-data-dir=${testProfile}`] }
+      : { args: [path.join(__dirname, '..', '..', 'app', 'electron', 'main.cjs'), ...ciArgs, `--user-data-dir=${testProfile}`] });
+    page = await application.firstWindow();
+    await page.waitForSelector('#btn-hero-browse');
+    await application.evaluate(({ dialog }, file) => {
+      dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [file] });
+    }, target);
+    await page.locator('#btn-open-file').click();
+    await expect(page.locator('.code-block')).toContainText(expected);
+  };
+  const crash = async () => {
+    const pid = application.process().pid;
+    if (process.platform === 'win32') await execFileAsync('taskkill', ['/F', '/T', '/PID', String(pid)]);
+    else application.process().kill('SIGKILL');
+    await expect.poll(() => { try { process.kill(pid, 0); return false; } catch { return true; } }).toBe(true);
+  };
+  const edit = async text => {
+    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await page.getByLabel('Edit document text').fill(text);
+    await expect.poll(draftCount).toBe(1);
+  };
+
+  try {
+    // Replace the shared instance: a second launch would quit on the single-instance lock.
+    await crash();
+    await launch();
+    await edit('first line\nrecovered work');
+    await crash();
+
+    await launch();
+    await expect(page.locator('#draft-recovery')).toBeVisible();
+    await expect(page.locator('#draft-recovery-message')).toContainText('recovered');
+    await page.locator('#btn-draft-discard').click();
+    await expect(page.locator('#draft-recovery')).toBeHidden();
+    await expect.poll(draftCount).toBe(0);
+    // Discarding leaves the file on disk untouched and no editor open.
+    expect(await fs.readFile(target, 'utf8')).toBe('first line\n');
+    await expect(page.getByLabel('Edit document text')).toHaveCount(0);
+
+    await edit('first line\nrestored work');
+    await crash();
+
+    await launch();
+    await expect(page.locator('#draft-recovery')).toBeVisible();
+    await page.locator('#btn-draft-restore').click();
+    await expect(page.getByLabel('Edit document text')).toHaveValue('first line\nrestored work');
+    await expect(page.locator('#draft-recovery')).toBeHidden();
+    await expect(page.locator('.file-tab.active .tab-title')).toContainText('●');
+
+    // Saving supersedes the recovery copy.
+    await page.keyboard.press('Control+s');
+    await expect.poll(() => fs.readFile(target, 'utf8')).toBe('first line\nrestored work');
+    await expect.poll(draftCount).toBe(0);
+    await closeActiveTab();
+
+    // A draft whose file changed on disk is flagged rather than offered as a clean restore.
+    await page.locator('#btn-open-file').click();
+    await expect(page.locator('.code-block')).toContainText('restored work');
+    await edit('first line\nrestored work\nmore work');
+    await crash();
+    await fs.writeFile(target, 'changed by another program\n');
+    await launch('changed by another program');
+    await expect(page.locator('#draft-recovery-message')).toContainText('changed on disk since');
+    await page.locator('#btn-draft-discard').click();
+    await expect.poll(draftCount).toBe(0);
+    expect(await fs.readFile(target, 'utf8')).toBe('changed by another program\n');
+    await closeActiveTab();
+  } finally {
+    await fs.rm(folder, { recursive: true, force: true });
+  }
 });
 
 // Keep this last: on Windows destroying the last window quits the application.
