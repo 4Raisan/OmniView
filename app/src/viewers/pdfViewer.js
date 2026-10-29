@@ -7,6 +7,23 @@ import { downloadBlob } from '../utils/fileHelpers.js';
 // Setup worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
+const SCREEN_PIXEL_BUDGET = 8_000_000;
+// Bound the whole print job, not one page: 300 pages at 8M pixels each is gigabytes.
+const PRINT_PIXEL_BUDGET = 200_000_000;
+
+let textLayerStyles;
+function loadTextLayerStyles() {
+  textLayerStyles ??= new Promise(resolve => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = new URL('pdf-assets/text-layer.css', document.baseURI).href;
+    link.onload = resolve;
+    link.onerror = resolve;
+    document.head.appendChild(link);
+  });
+  return textLayerStyles;
+}
+
 export class PdfViewer {
   constructor(container, toolbarContainer) {
     this.container = container;
@@ -16,26 +33,30 @@ export class PdfViewer {
     this.scale = 1.25;
     this.rotation = 0;
     this.rendering = false;
-    this.pendingPageNum = null;
-    this.rawBuffer = null;
     this.pages = [];
     this.renderQueue = new Set();
     this.renderGeneration = 0;
+    this.findQuery = '';
+    this.findMatches = [];
+    this.matchIndex = -1;
+    this.findGeneration = 0;
   }
 
-  async render(arrayBuffer, filename = 'document.pdf') {
+  async render(data, filename = 'document.pdf') {
     this.filename = filename;
-    this.rawBuffer = arrayBuffer;
     this.container.innerHTML = `<div class="viewer-loading"><div class="spinner"></div><p>Rendering PDF...</p></div>`;
 
     try {
+      await loadTextLayerStyles();
       const loadingTask = this.loadingTask = pdfjsLib.getDocument({
-        data: new Uint8Array(arrayBuffer.slice(0)),
+        data,
         cMapUrl: new URL('pdf-assets/cmaps/', document.baseURI).href,
         standardFontDataUrl: new URL('pdf-assets/standard_fonts/', document.baseURI).href,
         wasmUrl: new URL('pdf-assets/wasm/', document.baseURI).href,
         cMapPacked: true
       });
+      // onPassword lives on the loading task, not in the getDocument parameters.
+      loadingTask.onPassword = (callback, reason) => this.requestPassword(callback, reason);
 
       this.pdfDoc = await loadingTask.promise;
       if (this.destroyed) return;
@@ -48,6 +69,7 @@ export class PdfViewer {
       this.updatePageIndicator();
       this.queueVisiblePages();
     } catch (err) {
+      if (this.destroyed) return;
       console.error('PDF error:', err);
       this.container.innerHTML = `
         <div class="viewer-error">
@@ -59,6 +81,38 @@ export class PdfViewer {
     }
   }
 
+  requestPassword(callback, reason) {
+    const form = document.createElement('form');
+    form.className = 'pdf-password-form';
+    const heading = document.createElement('h3');
+    heading.textContent = 'This PDF is password protected';
+    const input = document.createElement('input');
+    input.type = 'password';
+    input.autocomplete = 'off';
+    input.setAttribute('aria-label', 'PDF password');
+    const error = document.createElement('p');
+    error.className = 'pdf-password-error';
+    error.setAttribute('role', 'status');
+    error.textContent = reason === pdfjsLib.PasswordResponses.INCORRECT_PASSWORD ? 'That password was not correct. Try again.' : '';
+    const unlock = document.createElement('button');
+    unlock.type = 'submit'; unlock.className = 'btn-primary'; unlock.textContent = 'Unlock';
+    const cancel = document.createElement('button');
+    cancel.type = 'button'; cancel.className = 'btn-text'; cancel.textContent = 'Cancel';
+    form.append(heading, input, error, unlock, cancel);
+    form.onsubmit = event => {
+      event.preventDefault();
+      this.container.innerHTML = '<div class="viewer-loading"><div class="spinner"></div><p>Unlocking PDF...</p></div>';
+      callback(input.value);
+    };
+    cancel.onclick = () => {
+      this.destroyed = true;
+      this.loadingTask?.destroy().catch(() => {});
+      this.container.innerHTML = '<div class="viewer-error"><h3>Password required</h3><p>This PDF cannot be opened without its password.</p></div>';
+    };
+    this.container.replaceChildren(form);
+    input.focus();
+  }
+
   async print() {
     if (!this.pdfDoc || this.printing) return;
     this.printing = true;
@@ -67,11 +121,13 @@ export class PdfViewer {
     printArea.className = 'pdf-print-pages';
     document.body.append(printArea);
     try {
+      const perPageBudget = Math.min(SCREEN_PIXEL_BUDGET, PRINT_PIXEL_BUDGET / this.pdfDoc.numPages);
       for (let number = 1; number <= this.pdfDoc.numPages; number++) {
         const page = await this.pdfDoc.getPage(number);
-        const dimensions = page.getViewport({ scale: 1, rotation: this.rotation });
-        const printScale = Math.min(1.5, Math.sqrt(8_000_000 / (dimensions.width * dimensions.height)));
-        const viewport = page.getViewport({ scale: printScale, rotation: this.rotation });
+        const rotation = (page.rotate + this.rotation) % 360;
+        const dimensions = page.getViewport({ scale: 1, rotation });
+        const printScale = Math.min(1.5, Math.sqrt(perPageBudget / (dimensions.width * dimensions.height)));
+        const viewport = page.getViewport({ scale: printScale, rotation });
         const canvas = document.createElement('canvas');
         canvas.width = viewport.width;
         canvas.height = viewport.height;
@@ -84,6 +140,7 @@ export class PdfViewer {
         await image.decode();
         printArea.append(image);
         canvas.width = canvas.height = 0;
+        page.cleanup();
       }
       document.body.classList.add('printing-pdf');
       if (window.desktop) await window.desktop.print();
@@ -99,12 +156,15 @@ export class PdfViewer {
   destroy() {
     this.destroyed = true;
     this.renderGeneration++;
+    this.findGeneration++;
+    clearTimeout(this.findTimer);
     this.renderTask?.cancel();
     this.resizeObserver?.disconnect();
     cancelAnimationFrame(this.scrollFrame);
     this.loadingTask?.destroy().catch(() => {});
     for (const item of this.pages) item.canvas.width = item.canvas.height = 0;
     this.renderQueue.clear();
+    this.pages = [];
   }
 
   suspend() {
@@ -116,7 +176,9 @@ export class PdfViewer {
       item.canvas.width = item.canvas.height = 0;
       item.rendered = false;
       item.section.classList.remove('rendered');
-      item.page.cleanup();
+      item.textLayer.replaceChildren();
+      item.textDivs = null;
+      item.page?.cleanup();
     }
   }
 
@@ -128,10 +190,11 @@ export class PdfViewer {
   async setupContainer() {
     this.container.innerHTML = '<div class="pdf-viewer-wrapper" tabindex="0" aria-label="PDF pages"></div>';
     this.scrollArea = this.container.firstElementChild;
+    const first = await this.pdfDoc.getPage(1);
+    if (this.destroyed) return;
+    const base = first.getViewport({ scale: 1 });
     const fragment = document.createDocumentFragment();
     for (let number = 1; number <= this.pdfDoc.numPages; number++) {
-      const page = await this.pdfDoc.getPage(number);
-      if (this.destroyed) return;
       const section = document.createElement('section');
       section.className = 'pdf-page';
       section.dataset.page = number;
@@ -139,8 +202,14 @@ export class PdfViewer {
       const canvas = document.createElement('canvas');
       canvas.className = 'pdf-page-canvas';
       if (number === 1) canvas.id = 'pdf-canvas';
-      section.append(canvas);
-      this.pages.push({ page, section, canvas, rendered: false });
+      const textLayer = document.createElement('div');
+      textLayer.className = 'textLayer';
+      section.append(canvas, textLayer);
+      // Only page 1 is fetched up front; the rest use its size until scrolled near.
+      this.pages.push({
+        page: number === 1 ? first : null, section, canvas, textLayer,
+        rendered: false, width: base.width, height: base.height, textDivs: null, textPromise: null
+      });
       fragment.append(section);
     }
     this.scrollArea.append(fragment);
@@ -156,19 +225,46 @@ export class PdfViewer {
     this.resizeObserver.observe(this.scrollArea);
   }
 
+  sizeSection(item) {
+    const swapped = this.rotation % 180 !== 0;
+    const width = (swapped ? item.height : item.width) * this.scale;
+    const height = (swapped ? item.width : item.height) * this.scale;
+    item.section.style.width = `${Math.floor(width)}px`;
+    item.section.style.height = `${Math.floor(height)}px`;
+  }
+
+  async ensurePage(index) {
+    const item = this.pages[index];
+    if (!item.page) {
+      item.page = await this.pdfDoc.getPage(index + 1);
+      const viewport = item.page.getViewport({ scale: 1 });
+      if (Math.abs(viewport.width - item.width) > 0.5 || Math.abs(viewport.height - item.height) > 0.5) {
+        item.width = viewport.width;
+        item.height = viewport.height;
+        this.sizeSection(item);
+      }
+    }
+    return item;
+  }
+
+  pageText(item) {
+    item.textPromise ??= item.page.getTextContent();
+    return item.textPromise;
+  }
+
   layoutPages() {
     this.renderGeneration++;
     this.renderTask?.cancel();
     this.renderQueue.clear();
     for (const item of this.pages) {
-      const viewport = item.page.getViewport({ scale: this.scale, rotation: this.rotation });
-      item.section.style.width = `${Math.floor(viewport.width)}px`;
-      item.section.style.height = `${Math.floor(viewport.height)}px`;
+      this.sizeSection(item);
       item.canvas.width = item.canvas.height = 0;
       item.canvas.style.width = '100%';
       item.canvas.style.height = '100%';
       item.rendered = false;
       item.section.classList.remove('rendered');
+      item.textLayer.replaceChildren();
+      item.textDivs = null;
     }
     this.layoutScale = this.scale;
     this.layoutRotation = this.rotation;
@@ -192,10 +288,13 @@ export class PdfViewer {
       this.updatePageIndicator();
       return;
     }
-    const top = this.scrollArea.getBoundingClientRect().top + 40;
+    // The page straddling the viewport centre is the current one. A top-edge rule
+    // disagrees with scrolling a search match into the middle of the view.
+    const bounds = this.scrollArea.getBoundingClientRect();
+    const middle = bounds.top + bounds.height / 2;
     let current = 1;
     for (const item of this.pages) {
-      if (item.section.getBoundingClientRect().top <= top) current = Number(item.section.dataset.page);
+      if (item.section.getBoundingClientRect().top <= middle) current = Number(item.section.dataset.page);
       else break;
     }
     this.currentPageNum = current;
@@ -217,7 +316,9 @@ export class PdfViewer {
           item.canvas.width = item.canvas.height = 0;
           item.rendered = false;
           item.section.classList.remove('rendered');
-          item.page.cleanup();
+          item.textLayer.replaceChildren();
+          item.textDivs = null;
+          item.page?.cleanup();
         }
       }
     }
@@ -234,9 +335,11 @@ export class PdfViewer {
         const item = this.pages[index];
         if (item.rendered) continue;
         const generation = this.renderGeneration;
-        const viewport = item.page.getViewport({ scale: this.scale, rotation: this.rotation });
+        await this.ensurePage(index);
+        if (generation !== this.renderGeneration || this.destroyed || this.suspended) continue;
+        const viewport = item.page.getViewport({ scale: this.scale, rotation: (item.page.rotate + this.rotation) % 360 });
         // Bound one screen canvas to 32 MB even on high-DPI displays at high zoom.
-        const dpr = Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(8_000_000 / (viewport.width * viewport.height)));
+        const dpr = Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(SCREEN_PIXEL_BUDGET / (viewport.width * viewport.height)));
         item.canvas.width = Math.floor(viewport.width * dpr);
         item.canvas.height = Math.floor(viewport.height * dpr);
         try {
@@ -248,6 +351,7 @@ export class PdfViewer {
           if (generation === this.renderGeneration) {
             item.rendered = true;
             item.section.classList.add('rendered');
+            await this.renderTextLayer(item, viewport, generation);
           }
         } catch (error) {
           if (error.name !== 'RenderingCancelledException' && !this.destroyed) {
@@ -257,11 +361,118 @@ export class PdfViewer {
           this.renderTask = null;
           if (this.suspended || this.destroyed) {
             item.canvas.width = item.canvas.height = 0;
-            item.page.cleanup();
+            item.page?.cleanup();
           }
         }
       }
     } finally { this.rendering = false; }
+  }
+
+  async renderTextLayer(item, viewport, generation) {
+    const textContent = await this.pageText(item);
+    if (generation !== this.renderGeneration || this.destroyed || this.suspended || !item.rendered) return;
+    item.textLayer.replaceChildren();
+    const layer = new pdfjsLib.TextLayer({ textContentSource: textContent, container: item.textLayer, viewport });
+    await layer.render();
+    if (generation !== this.renderGeneration || this.destroyed || this.suspended) return;
+    item.textDivs = layer.textDivs;
+    this.highlightPage(item);
+    this.scrollToMatch(item);
+  }
+
+  async runFind(query) {
+    const generation = ++this.findGeneration;
+    this.findQuery = query;
+    this.findMatches = [];
+    this.matchIndex = -1;
+    this.clearHighlights();
+    if (!query.trim() || !this.pdfDoc) { this.updateFindCount(); return; }
+    const needle = query.toLowerCase();
+    const total = this.pdfDoc.numPages;
+    const start = this.currentPageNum - 1;
+    // Scan outward from the current page so the nearest hit is found first.
+    for (let offset = 0; offset < total; offset++) {
+      if (generation !== this.findGeneration || this.destroyed) return;
+      const index = (start + offset) % total;
+      const item = await this.ensurePage(index);
+      if (generation !== this.findGeneration || this.destroyed) return;
+      const text = await this.pageText(item);
+      const joined = text.items.map(entry => entry.str).join(' ').toLowerCase();
+      let at = joined.indexOf(needle);
+      while (at !== -1) {
+        this.findMatches.push(index);
+        at = joined.indexOf(needle, at + needle.length);
+      }
+      this.updateFindCount();
+      if (this.findMatches.length && this.matchIndex === -1) {
+        this.matchIndex = 0;
+        this.updateFindCount();
+        // Highlight now if the page is already rendered; navigating re-highlights
+        // through renderTextLayer once the page comes into view.
+        this.highlightPage(item);
+        this.renderPage(index + 1);
+        this.scrollToMatch(item);
+      }
+      // Yield regularly so a long document does not block typing.
+      if (offset % 10 === 9) await new Promise(resolve => setTimeout(resolve, 0));
+    }
+    if (generation === this.findGeneration) this.updateFindCount();
+  }
+
+  stepMatch(delta) {
+    if (!this.findMatches.length) return;
+    this.matchIndex = (this.matchIndex + delta + this.findMatches.length) % this.findMatches.length;
+    const item = this.pages[this.findMatches[this.matchIndex]];
+    this.updateFindCount();
+    this.highlightPage(item);
+    this.renderPage(this.findMatches[this.matchIndex] + 1);
+    this.scrollToMatch(item);
+  }
+
+  scrollToMatch(item) {
+    if (this.matchIndex < 0 || this.findMatches[this.matchIndex] !== this.pages.indexOf(item)) return;
+    const mark = item.textLayer.querySelector('mark.pdf-match');
+    if (mark) mark.scrollIntoView({ block: 'center', inline: 'nearest' });
+  }
+
+  clearHighlights() {
+    for (const item of this.pages) {
+      if (!item.textDivs) continue;
+      for (const div of item.textDivs) {
+        if (div.querySelector('mark.pdf-match')) div.textContent = div.dataset.original ?? div.textContent;
+      }
+    }
+  }
+
+  highlightPage(item) {
+    const query = this.findQuery;
+    if (!query.trim() || !item.textDivs) return;
+    const needle = query.toLowerCase();
+    for (const div of item.textDivs) {
+      const text = div.textContent;
+      const lower = text.toLowerCase();
+      if (!lower.includes(needle)) continue;
+      div.dataset.original = text;
+      const fragment = document.createDocumentFragment();
+      let start = 0, index;
+      while ((index = lower.indexOf(needle, start)) !== -1) {
+        fragment.append(document.createTextNode(text.slice(start, index)));
+        const mark = document.createElement('mark');
+        mark.className = 'pdf-match';
+        mark.textContent = text.slice(index, index + needle.length);
+        fragment.append(mark);
+        start = index + needle.length;
+      }
+      fragment.append(document.createTextNode(text.slice(start)));
+      div.replaceChildren(fragment);
+    }
+  }
+
+  updateFindCount() {
+    const counter = this.toolbarContainer.querySelector('.pdf-find-count');
+    if (!counter) return;
+    const total = this.findMatches.length;
+    counter.textContent = !this.findQuery.trim() ? '' : total ? `${this.matchIndex + 1} / ${total}` : 'No matches';
   }
 
   renderToolbar() {
@@ -303,6 +514,41 @@ export class PdfViewer {
       }
     };
     toolbar.appendChild(navGroup);
+
+    // Full-text search across the document
+    const findWrapper = document.createElement('div');
+    findWrapper.className = 'toolbar-search';
+    findWrapper.innerHTML = `<span class="search-icon">${icons.search}</span>`;
+    const find = document.createElement('input');
+    find.type = 'text';
+    find.placeholder = 'Find in PDF…';
+    find.setAttribute('aria-label', 'Find in PDF');
+    find.value = this.findQuery;
+    find.oninput = () => {
+      clearTimeout(this.findTimer);
+      this.findTimer = setTimeout(() => this.runFind(find.value), 300);
+    };
+    find.onkeydown = event => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      this.stepMatch(event.shiftKey ? -1 : 1);
+    };
+    findWrapper.append(find);
+    toolbar.appendChild(findWrapper);
+
+    const findNav = document.createElement('div');
+    findNav.className = 'toolbar-find-group';
+    findNav.innerHTML = `
+      <button class="btn-icon" id="pdf-match-prev" title="Previous match" aria-label="Previous match">${icons.chevronLeft}</button>
+      <button class="btn-icon" id="pdf-match-next" title="Next match" aria-label="Next match">${icons.chevronRight}</button>
+    `;
+    findNav.querySelector('#pdf-match-prev').onclick = () => this.stepMatch(-1);
+    findNav.querySelector('#pdf-match-next').onclick = () => this.stepMatch(1);
+    toolbar.appendChild(findNav);
+
+    const count = document.createElement('span');
+    count.className = 'pdf-find-count toolbar-badge';
+    toolbar.appendChild(count);
 
     // Zoom controls
     const zoomGroup = document.createElement('div');
@@ -368,14 +614,18 @@ export class PdfViewer {
     downloadBtn.className = 'btn-icon';
     downloadBtn.title = 'Download PDF';
     downloadBtn.innerHTML = icons.download;
-    downloadBtn.onclick = () => {
-      const blob = new Blob([this.rawBuffer], { type: 'application/pdf' });
-      downloadBlob(blob, this.filename);
+    // Ask the worker for the original bytes instead of retaining a second full copy.
+    downloadBtn.onclick = async () => {
+      try {
+        const bytes = await this.pdfDoc.getData();
+        downloadBlob(new Blob([bytes], { type: 'application/pdf' }), this.filename);
+      } catch (error) { alert('Could not export the PDF: ' + error.message); }
     };
     actionsGroup.appendChild(downloadBtn);
 
     toolbar.appendChild(actionsGroup);
     this.toolbarContainer.appendChild(toolbar);
+    this.updateFindCount();
   }
 
   updatePageIndicator() {
