@@ -48,7 +48,7 @@ function Get-OmniViewShortcuts {
 
 function Get-UninstallEntry {
     return @(Get-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*' -ErrorAction SilentlyContinue |
-        Where-Object { $_.DisplayName -eq 'OmniView' })
+        Where-Object { $_.DisplayName -match '^OmniView( |$)' })
 }
 
 function Stop-InstalledApp {
