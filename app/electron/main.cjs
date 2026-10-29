@@ -37,10 +37,11 @@ const checkUpdates = createUpdateChecker(viewerVersion);
 const { readLegacyDoc } = require('./legacy-doc.cjs');
 async function showUpdateCheck() {
   const result = await checkUpdates(true);
-  if (!mainWindow || mainWindow.isDestroyed()) return;
-  mainWindow.webContents.send('update-status', result);
+  const window = liveWindow();
+  if (!window) return;
+  window.webContents.send('update-status', result);
   const available = result.status === 'available';
-  const answer = await dialog.showMessageBox(mainWindow, {
+  const answer = await dialog.showMessageBox(window, {
     type: 'info', title: 'OmniView updates',
     message: available ? `OmniView ${result.latestVersion} is available` : result.status === 'current' ? `OmniView ${viewerVersion} is up to date` : 'Could not check for updates',
     detail: available ? `You are using ${viewerVersion}. Download the new version from GitHub Releases.` : result.status === 'current' ? 'You have the latest published stable version.' : 'Check your connection and try again. You can keep using OmniView offline.',
@@ -52,6 +53,26 @@ let mainWindow;
 let rendererReady = false;
 let desktopReady = false;
 let quitRequested = false;
+// On macOS the app outlives its window, so every menu and IPC entry point has to
+// tolerate a null or destroyed window instead of dereferencing it.
+const liveWindow = () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null);
+function ensureWindow() {
+  if (!liveWindow() && desktopReady) createWindow();
+  return liveWindow();
+}
+function sendToRenderer(channel, ...args) {
+  liveWindow()?.webContents.send(channel, ...args);
+}
+const trustedSender = event => Boolean(liveWindow()) && event.sender === mainWindow.webContents;
+function handleTrusted(channel, listener) {
+  ipcMain.handle(channel, (event, ...args) => {
+    if (!trustedSender(event)) throw new Error('Blocked an unexpected IPC sender.');
+    return listener(event, ...args);
+  });
+}
+function onTrusted(channel, listener) {
+  ipcMain.on(channel, (event, ...args) => { if (trustedSender(event)) listener(event, ...args); });
+}
 app.on('before-quit', () => { quitRequested = true; });
 let pendingPaths = [];
 const MAX_FILE_SIZE = 256 * 1024 * 1024;
@@ -60,7 +81,8 @@ const argumentFiles = argv => argv.filter(arg => !arg.startsWith('-')).map(arg =
 }).filter(arg => path.isAbsolute(arg) && path.resolve(arg) !== path.resolve(__filename) && !(process.platform === 'win32' && /\.exe$/i.test(arg)));
 
 async function openPaths(paths) {
-  if (!mainWindow || !rendererReady) {
+  const window = liveWindow();
+  if (!window || !rendererReady) {
     pendingPaths.push(...paths);
     return;
   }
@@ -76,13 +98,13 @@ async function openPaths(paths) {
         ...recentFiles.filter(item => pathKey(item.path) !== pathKey(resolved))].slice(0, 25);
       if (isMedia) {
         const mediaToken = randomUUID(); mediaFiles.set(mediaToken, resolved);
-        mainWindow.webContents.send('open-media', { name: path.basename(resolved), size: stat.size, filePath: resolved, mediaToken, url: `viewer-media://${mediaToken}/media` });
+        window.webContents.send('open-media', { name: path.basename(resolved), size: stat.size, filePath: resolved, mediaToken, url: `viewer-media://${mediaToken}/media` });
         continue;
       }
       const bytes = await fs.readFile(filePath);
       const editToken = bytes.length <= 2 * 1024 * 1024 ? randomUUID() : null;
       if (editToken) editFiles.set(editToken, { path: resolved, hash: digest(bytes) });
-      mainWindow.webContents.send('open-file', { name: path.basename(filePath), bytes, filePath: resolved, editToken });
+      window.webContents.send('open-file', { name: path.basename(filePath), bytes, filePath: resolved, editToken });
     } catch (error) {
       dialog.showErrorBox('Could not open file', `${path.basename(filePath)}: ${error.message}`);
     }
@@ -92,7 +114,9 @@ async function openPaths(paths) {
 }
 
 async function pickFiles() {
-  const result = await dialog.showOpenDialog(mainWindow, { properties: ['openFile', 'multiSelections'] });
+  const window = ensureWindow();
+  if (!window) return;
+  const result = await dialog.showOpenDialog(window, { properties: ['openFile', 'multiSelections'] });
   if (!result.canceled) await openPaths(result.filePaths);
 }
 
@@ -151,13 +175,14 @@ else {
   pendingPaths = argumentFiles(process.argv.slice(app.isPackaged ? 1 : 2));
   app.on('open-file', (event, filePath) => {
     event.preventDefault();
-    if (desktopReady && !mainWindow) createWindow();
+    ensureWindow();
     openPaths([filePath]);
   });
-  app.on('activate', () => { if (desktopReady && !mainWindow) createWindow(); });
+  app.on('activate', () => { ensureWindow(); });
   app.on('second-instance', (_event, argv) => {
-    if (mainWindow?.isMinimized()) mainWindow.restore();
-    mainWindow?.focus();
+    const window = ensureWindow();
+    if (window?.isMinimized()) window.restore();
+    window?.focus();
     openPaths(argumentFiles(argv.slice(1)));
   });
   app.whenReady().then(async () => {
@@ -197,40 +222,47 @@ else {
       const saved = JSON.parse(await fs.readFile(historyPath(), 'utf8'));
       if (Array.isArray(saved)) recentFiles = saved.filter(item => typeof item.id === 'string' && typeof item.name === 'string' && typeof item.path === 'string' && path.isAbsolute(item.path)).slice(0, 25);
     } catch { /* A new install or invalid history starts empty. */ }
-    ipcMain.on('show-menu', (_event, { name, x, y }) => {
+    onTrusted('show-menu', (_event, { name, x, y }) => {
       if (!['File', 'Edit', 'View', 'Help'].includes(name)) return;
+      const window = liveWindow();
+      if (!window) return;
       const submenu = Menu.getApplicationMenu()?.items.find(item => item.label === name)?.submenu;
-      const zoom = mainWindow.webContents.getZoomFactor();
-      const bounds = mainWindow.getContentBounds();
-      submenu?.popup({ window: mainWindow, x: Math.max(0, Math.min(bounds.width - 1, Math.round((Number(x) || 0) * zoom))), y: Math.max(0, Math.min(bounds.height - 1, Math.round((Number(y) || 36) * zoom))) });
+      const zoom = window.webContents.getZoomFactor();
+      const bounds = window.getContentBounds();
+      submenu?.popup({ window, x: Math.max(0, Math.min(bounds.width - 1, Math.round((Number(x) || 0) * zoom))), y: Math.max(0, Math.min(bounds.height - 1, Math.round((Number(y) || 36) * zoom))) });
     });
-    ipcMain.handle('pick-files', pickFiles);
-    ipcMain.handle('read-legacy-doc', (_event, bytes) => readLegacyDoc(bytes));
-    ipcMain.handle('check-updates', () => checkUpdates());
-    ipcMain.handle('open-update-release', () => shell.openExternal(RELEASE_PAGE));
-    ipcMain.handle('support-project', () => shell.openExternal('https://github.com/4Raisan/OmniView'));
-    ipcMain.handle('recent-files', async () => Promise.all(recentFiles.map(async item => {
+    handleTrusted('pick-files', pickFiles);
+    handleTrusted('read-legacy-doc', (_event, bytes) => readLegacyDoc(bytes));
+    handleTrusted('check-updates', () => checkUpdates());
+    handleTrusted('open-update-release', () => shell.openExternal(RELEASE_PAGE));
+    handleTrusted('support-project', () => shell.openExternal('https://github.com/4Raisan/OmniView'));
+    handleTrusted('recent-files', async () => Promise.all(recentFiles.map(async item => {
       try {
         const stat = await fs.stat(item.path);
         return { ...item, size: stat.size, missing: !stat.isFile() };
       } catch { return { ...item, missing: true }; }
     })));
-    ipcMain.handle('open-recent', async (_event, id) => {
+    handleTrusted('open-recent', async (_event, id) => {
       const item = recentFiles.find(item => item.id === id);
       if (item) await openPaths([item.path]);
     });
-    ipcMain.handle('clear-recents', async () => { recentFiles = []; await saveHistory(); });
-    ipcMain.handle('open-dropped', async (_event, paths) => {
+    handleTrusted('clear-recents', async () => { recentFiles = []; await saveHistory(); });
+    handleTrusted('open-dropped', async (_event, paths) => {
       if (!Array.isArray(paths) || paths.length > 100 || paths.some(value => typeof value !== 'string' || !path.isAbsolute(value))) throw new Error('Invalid dropped files');
       await openPaths(paths);
     });
-    ipcMain.handle('fullscreen', () => mainWindow.setFullScreen(!mainWindow.isFullScreen()));
-    ipcMain.handle('save-text', async (_event, { token, name, bytes, saveAs }) => {
+    handleTrusted('fullscreen', () => {
+      const window = liveWindow();
+      if (window) window.setFullScreen(!window.isFullScreen());
+    });
+    handleTrusted('save-text', async (_event, { token, name, bytes, saveAs }) => {
       if (!(bytes instanceof Uint8Array) || bytes.byteLength > 2 * 1024 * 1024) throw new Error('Editing is limited to 2 MB.');
       const original = editFiles.get(token);
       let target = original?.path;
       if (!target || saveAs) {
-        const result = await dialog.showSaveDialog(mainWindow, { defaultPath: target || path.basename(name) });
+        const window = liveWindow();
+        if (!window) return null;
+        const result = await dialog.showSaveDialog(window, { defaultPath: target || path.basename(name) });
         if (result.canceled) return null;
         target = result.filePath;
       } else {
@@ -242,7 +274,11 @@ else {
       }
       const temporary = path.join(path.dirname(target), `.${path.basename(target)}.${randomUUID()}.tmp`);
       try {
-        await fs.writeFile(temporary, bytes, { flag: 'wx' });
+        // Flush before rename: a rename alone can leave a zero-length file after power loss.
+        // Windows needs a write-mode handle for FlushFileBuffers, so write and sync the same one.
+        const temporaryHandle = await fs.open(temporary, 'wx');
+        try { await temporaryHandle.writeFile(bytes); await temporaryHandle.sync(); }
+        finally { await temporaryHandle.close(); }
         for (let attempt = 0; ; attempt++) {
           if (original && pathKey(target) === pathKey(original.path) && digest(await fs.readFile(target)) !== original.hash) {
             throw new Error('This file changed outside OmniView. Use a different Save As name.');
@@ -261,29 +297,44 @@ else {
       await saveHistory().catch(() => {});
       return { token: nextToken, path: target, name: path.basename(target) };
     });
-    ipcMain.handle('confirm-edit-close', async (_event, name) => (await dialog.showMessageBox(mainWindow, {
-      type: 'question', buttons: ['Save', 'Discard', 'Cancel'], defaultId: 0, cancelId: 2,
-      message: `Save changes to ${path.basename(name)}?`
-    })).response);
-    ipcMain.on('release-edit-file', (_event, token) => editFiles.delete(token));
-    ipcMain.on('release-media', (_event, token) => releaseMedia(token));
-    ipcMain.on('allow-close', () => {
-      mainWindow.allowEditedClose = true;
-      if (quitRequested) app.quit(); else mainWindow.close();
+    handleTrusted('confirm-edit-close', async (_event, name) => {
+      const window = liveWindow();
+      if (!window) return 2;
+      return (await dialog.showMessageBox(window, {
+        type: 'question', buttons: ['Save', 'Discard', 'Cancel'], defaultId: 0, cancelId: 2,
+        message: `Save changes to ${path.basename(name)}?`
+      })).response;
     });
-    ipcMain.on('cancel-close', () => { quitRequested = false; });
-    ipcMain.on('allow-reload', () => { mainWindow.allowEditedReload = true; mainWindow.webContents.reload(); });
-    ipcMain.on('cancel-reload', () => { mainWindow.webContents.stop(); rendererReady = true; });
-    ipcMain.handle('print', () => new Promise(resolve => mainWindow.webContents.print({ printBackground: true }, success => resolve(success))));
-    ipcMain.handle('save-file', async (_event, { name, bytes }) => {
+    onTrusted('release-edit-file', (_event, token) => editFiles.delete(token));
+    onTrusted('release-media', (_event, token) => releaseMedia(token));
+    onTrusted('allow-close', () => {
+      const window = liveWindow();
+      if (!window) return;
+      window.allowEditedClose = true;
+      if (quitRequested) app.quit(); else window.close();
+    });
+    onTrusted('cancel-close', () => { quitRequested = false; });
+    onTrusted('allow-reload', () => {
+      const window = liveWindow();
+      if (!window) return;
+      window.allowEditedReload = true; window.webContents.reload();
+    });
+    onTrusted('cancel-reload', () => { liveWindow()?.webContents.stop(); rendererReady = true; });
+    handleTrusted('print', () => new Promise(resolve => {
+      const window = liveWindow();
+      if (!window) return resolve(false);
+      window.webContents.print({ printBackground: true }, success => resolve(success));
+    }));
+    handleTrusted('save-file', async (_event, { name, bytes }) => {
       if (!(bytes instanceof Uint8Array) || bytes.byteLength > MAX_FILE_SIZE) throw new Error('Invalid export data.');
-      const result = await dialog.showSaveDialog(mainWindow, { defaultPath: path.basename(name) });
+      const window = liveWindow();
+      if (!window) return false;
+      const result = await dialog.showSaveDialog(window, { defaultPath: path.basename(name) });
       if (result.canceled) return false;
       await fs.writeFile(result.filePath, Buffer.from(bytes));
       return true;
     });
-    ipcMain.on('viewer-ready', event => {
-      if (event.sender !== mainWindow.webContents) return;
+    onTrusted('viewer-ready', () => {
       rendererReady = true;
       const paths = pendingPaths;
       pendingPaths = [];
@@ -293,16 +344,20 @@ else {
       ...(isMac ? [{ label: 'OmniView', submenu: [{ role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' }, { role: 'quit' }] }] : []),
       { label: 'File', submenu: [
         { label: 'Open…', accelerator: 'CmdOrCtrl+O', click: pickFiles },
-        { label: 'Save text', accelerator: 'CmdOrCtrl+S', click: () => mainWindow.webContents.send('save-document', false) },
-        { label: 'Save text as…', accelerator: 'CmdOrCtrl+Shift+S', click: () => mainWindow.webContents.send('save-document', true) },
-        { label: 'Close document', accelerator: 'CmdOrCtrl+W', click: () => mainWindow.webContents.send('close-document') },
-        { label: 'Print…', accelerator: 'CmdOrCtrl+P', click: () => mainWindow.webContents.send('print-document') },
+        { label: 'Save text', accelerator: 'CmdOrCtrl+S', click: () => sendToRenderer('save-document', false) },
+        { label: 'Save text as…', accelerator: 'CmdOrCtrl+Shift+S', click: () => sendToRenderer('save-document', true) },
+        { label: 'Close document', accelerator: 'CmdOrCtrl+W', click: () => sendToRenderer('close-document') },
+        { label: 'Print…', accelerator: 'CmdOrCtrl+P', click: () => sendToRenderer('print-document') },
         { type: 'separator' }, { role: 'quit' }
       ] },
       { label: 'Edit', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
       { label: 'View', submenu: [{ role: 'togglefullscreen' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }] },
       { label: 'Help', submenu: [
-        { label: 'About OmniView', click: () => dialog.showMessageBox(mainWindow, { title: 'OmniView', message: `OmniView ${viewerVersion}`, detail: 'Any File. One Viewer.\n\nhttps://github.com/4Raisan/OmniView\n\nIf OmniView helps you, star the repository to support the project.\nShare ideas and feedback in GitHub Discussions.\n\nView and edit supported files locally.' }) },
+        { label: 'About OmniView', click: () => {
+          const options = { title: 'OmniView', message: `OmniView ${viewerVersion}`, detail: 'Any File. One Viewer.\n\nhttps://github.com/4Raisan/OmniView\n\nIf OmniView helps you, star the repository to support the project.\nShare ideas and feedback in GitHub Discussions.\n\nView and edit supported files locally.' };
+          const window = liveWindow();
+          if (window) dialog.showMessageBox(window, options); else dialog.showMessageBox(options);
+        } },
         { label: 'GitHub repository — star to support', click: () => shell.openExternal('https://github.com/4Raisan/OmniView') },
         { label: 'Discussions — ideas and feedback', click: () => shell.openExternal('https://github.com/4Raisan/OmniView/discussions/5') },
         { type: 'separator' }, { label: 'Check for updates…', click: showUpdateCheck }
