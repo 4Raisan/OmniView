@@ -7,6 +7,34 @@ also where downloads and SHA256 checksums are published.
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- PPTX viewing: slides open one at a time with their text, tables, pictures and
+  speaker notes in shape order, with slide navigation. Legacy binary `.ppt` is
+  refused with a conversion hint. Slide layout, themes, animations and
+  transitions are not reproduced.
+- Unsaved edits are autosaved to a recovery draft. After an unexpected exit,
+  reopening the file offers **Restore** or **Discard**. Drafts are bounded to the
+  20 most recent and 7 days, and are removed on save, discard or clean close.
+- Code viewer find now counts matches across the whole file and steps through
+  them with Enter/Shift+Enter or the toolbar arrows, building lines on demand.
+
+### Changed
+
+- The code viewer renders the first 1,200 lines and grows as you scroll, instead
+  of building every row up front. Opening a large file no longer freezes the UI.
+  Printing still renders the whole file first.
+
+### Fixed
+
+- Syntax highlighting no longer breaks multi-line block comments, template
+  literals and strings: the document is highlighted once and split into lines
+  with the open spans carried across each break.
+- PDF current-page tracking is O(log n) in the page count instead of measuring
+  every page on each scroll event.
+
 ## 1.11.0
 
 ### Added

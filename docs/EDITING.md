@@ -10,6 +10,16 @@ Because the save replaces the file by rename, Windows ACLs, alternate data strea
 
 A file opened from inside a ZIP has no path on disk, so Save always becomes Save As and writes a new file; the archive itself is never modified. Its BOM and line endings are preserved in that new file.
 
+## Autosave and crash recovery
+
+Unsaved edits are written to a recovery draft about **2 seconds** after the last keystroke, and immediately when you switch tabs or leave Edit for Preview. If OmniView exits unexpectedly, reopening that file shows a bar offering **Restore** or **Discard**. Restore puts the text back in the editor as unsaved changes; the file on disk is untouched until you save.
+
+Drafts are keyed by the file path, so recovery only applies to files opened from disk. Files without a path (including files opened from inside a ZIP) and read-only formats are never autosaved. A draft that already matches the file is dropped without prompting. If the file changed on disk after the draft was written, the bar says so and asks you to review before saving over it — the external-change guard still applies to changes made while the tab is open.
+
+While an offer is unanswered, autosave is paused for that tab so new typing cannot overwrite the recovered text. Choosing Restore or Discard resumes it. Saving, discarding, closing the tab or quitting without unsaved changes all delete the draft. Drafts live in the per-user data directory and are bounded to the **20 most recent** and **7 days**; see the [privacy policy](PRIVACY.md) for exactly what they contain.
+
+Recovery is best effort. A full or read-only disk can prevent a draft from being written, and autosave never interrupts typing to report that. It is not a substitute for saving.
+
 ## Markdown
 
 Choose Split then Edit, or Edit then Live split. Small documents update the sanitized preview **250 ms after the last input**. Documents above **131,072 characters** use Refresh preview to keep editing independent of formatting. Preview rendering is bounded to the first **65,536 characters or 2,000 lines**, with a notice; full text remains in Raw view, Copy, the editor and saved files. Markdown Find searches visible content, with Enter/Shift+Enter scrolling through up to 2,000 highlighted matches. Raw mode searches full rendered source; formatted and split modes search the bounded preview.
@@ -20,4 +30,4 @@ Hidden preview tabs release their rendered nodes. Editing tabs retain the native
 
 There is no new runtime dependency. Editing retains the text, a comparison baseline and native undo history, so memory varies with document size and editing history. The 2 MB eligibility and save checks protect against accidental large-file editing; they do not guarantee a fixed amount of RAM or constant typing latency. Large pastes and many open drafts can still cost more than read-only previews. See [measured benchmarks](PERFORMANCE.md) for the app as a whole.
 
-Validation covers BOM/CRLF, unsupported encodings and size limits, external-change conflicts, cancelled saves, draft tab switching, close/refresh protection, live preview sanitation, manual large-file preview and selection copying.
+Validation covers BOM/CRLF, unsupported encodings and size limits, external-change conflicts, cancelled saves, draft tab switching, close/refresh protection, live preview sanitation, manual large-file preview and selection copying. Crash recovery is tested by killing the application process outright, relaunching, and exercising both the Discard and Restore paths plus a draft whose file changed on disk.

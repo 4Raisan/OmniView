@@ -34,7 +34,13 @@ Two things to know before editing tests:
   subset with `--grep` can fail for reasons unrelated to your change — always run
   the whole file before concluding you broke something.
 - Put new coverage in `tooling/tests/fixes.spec.cjs`, which has its own instance
-  and an `afterAll` that closes it.
+  and an `afterAll` that closes it. The crash-recovery test near the end kills
+  that instance outright and relaunches it, so keep it after the tests that
+  depend on the original instance and before the final no-window test.
+
+`tooling/scripts/verify-windows-installer.ps1` silently installs and uninstalls
+the app for the current Windows user. It runs only on a disposable CI runner.
+Do not run it on your own machine: it writes HKCU registrations and shortcuts.
 
 If you change viewer behaviour, add a test that fails without the change. For
 parser and sanitizer work, build a minimal synthetic fixture rather than

@@ -74,11 +74,13 @@ See [editing details](EDITING.md) and [performance measurements](PERFORMANCE.md)
 
 `npm test` runs the `node:test` unit checks (legacy DOC parsing and the update checker, no build needed) and then the Playwright desktop checks, which require `npm run build` first. Linux tests need a desktop display; CI uses Xvfb. The isolated Linux CI runner disables Chromium sandboxing only for automated tests; user builds keep the renderer sandbox enabled.
 
-Desktop checks share one application instance and run in file order, so a failure can cascade into later tests. `tooling/tests/desktop.spec.cjs` covers the original surface; `tooling/tests/fixes.spec.cjs` covers format sniffing, sanitizing, decompression budgets, PDF text/search/passwords, spreadsheet formatting, tab keyboard access and window lifecycle. CI uploads `tooling/test-results/` traces when a run fails.
+Desktop checks share one application instance and run in file order, so a failure can cascade into later tests. `tooling/tests/desktop.spec.cjs` covers the original surface; `tooling/tests/fixes.spec.cjs` covers format sniffing, sanitizing, decompression budgets, PDF text/search/passwords, PPTX slides, spreadsheet formatting, chunked code rendering and find, tab keyboard access, window lifecycle and crash recovery. The crash-recovery test kills its Electron instance outright and relaunches it, so it stays near the end of the file. CI uploads `tooling/test-results/` traces when a run fails.
 
 CI checks Windows, Linux, Apple Silicon and Intel macOS, and audits shipped dependencies with `npm audit --omit=dev --audit-level=high`. The manual **Build release downloads** workflow first checks the ref and version, then packages each platform, checks its executable, attests build provenance and collects downloads plus SHA256SUMS.txt in a draft release. It refuses to replace an already published version. Review and publish the draft after all targets pass.
 
-The packaged smoke test runs the `*-unpacked` executable, not the installer, portable EXE, DMG, AppImage or .deb. Installer registration and first-run behaviour still need a manual check on a clean machine before publishing.
+On Windows the release workflow also runs `tooling/scripts/verify-windows-installer.ps1`: it silently installs the real NSIS setup on the disposable runner, asserts the per-user PDF registrations and uninstall entry exist without touching the protected PDF default, runs the desktop checks against the **installed** executable, then uninstalls and asserts the registrations, shortcuts and uninstall entry are gone. That script installs software for the current user — run it only on a disposable CI runner, never on a development machine.
+
+The portable EXE, DMG, AppImage and .deb are still not exercised by an automated install; their first-run behaviour needs a manual check on a clean machine before publishing.
 
 Generated dependencies, `app/dist/`, test output and `release/` stay ignored by Git. The SheetJS archive in `tooling/vendor/` is a required pinned dependency, not a backup. Application identity and preference keys remain compatible with earlier OmniView/Multi-Viewer installs.
 

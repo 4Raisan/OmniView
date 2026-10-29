@@ -16,23 +16,25 @@ Choose PDF defaults through your OS's **Open with** settings. Windows builds are
 
 ## What it does
 
-- View PDFs, DOCX, legacy DOC text, spreadsheets, Markdown, text/code, images, audio/video and ZIP archives.
+- View PDFs, DOCX, legacy DOC text, PPTX slides, spreadsheets, Markdown, text/code, images, audio/video and ZIP archives.
 - Select and copy PDF text, search the whole document, and open password-protected PDFs.
 - Use compact tabs, drag and drop, per-viewer search, six dark themes plus a light theme, adjustable text size and a resizable sidebar.
 - Navigate tabs from the keyboard: Arrow keys move between them, Home/End jump, Delete closes.
 - Reopen your last 25 files from disk, or erase that list with **Clear History**.
 - Edit UTF-8 text and Markdown up to **2 MB**, with safe saves and live Markdown split preview. UTF-16 files open read-only.
+- Unsaved edits are autosaved; after an unexpected exit, reopening the file offers to restore or discard them.
+- Search text/code files with whole-file match counts and Enter/Shift+Enter stepping; large files render as you scroll.
 - Switch spreadsheet sheets, filter rows and export a sheet to CSV; numbers and dates keep the workbook's own formats.
 - Scroll PDF pages continuously, stream native media from disk with 0.5×–2× speed, filter and extract ZIP entries, and pretty-print or compact JSON.
 - From version 1.9.0, see a notice when a newer stable release is published. Use **Help → Check for updates** at any time.
 
-Legacy DOC opens offline in a read-only text view, including Unicode, headers, footers and notes (up to 32 MB). Original page layout, images and formatting are not shown; use DOCX for formatted viewing. Password-protected DOC and RTF need conversion to unprotected DOCX. Media playback depends on codec support; spreadsheet formulas display saved values. PPTX, EPUB, ODT, RAR/7-Zip, MKV and AVI are not supported — OmniView names the format in the error rather than showing it as text.
+Legacy DOC opens offline in a read-only text view, including Unicode, headers, footers and notes (up to 32 MB). Original page layout, images and formatting are not shown; use DOCX for formatted viewing. Password-protected DOC and RTF need conversion to unprotected DOCX. PPTX opens one slide at a time as text, tables, pictures and speaker notes in shape order; slide layout, themes, animations and transitions are not reproduced, and legacy binary `.ppt` needs conversion to `.pptx`. Media playback depends on codec support; spreadsheet formulas display saved values. EPUB, ODT, RAR/7-Zip, MKV and AVI are not supported — OmniView names the format in the error rather than showing it as text.
 
-**Limits:** documents up to 256 MB (native audio/video streams from disk and is exempt), legacy DOC up to 32 MB, editing up to 2 MB of valid UTF-8, ZIP entries up to 256 MB uncompressed, up to 100 files per drag-and-drop, and spreadsheets read up to 200,000 rows × 512 columns.
+**Limits:** documents up to 256 MB (native audio/video streams from disk and is exempt), legacy DOC up to 32 MB, editing up to 2 MB of valid UTF-8, ZIP entries up to 256 MB uncompressed, up to 100 files per drag-and-drop, spreadsheets read up to 200,000 rows × 512 columns, and presentations show the first 500 slides with pictures up to 32 MB each.
 
 **Shortcuts:** use Cmd on Mac, Ctrl elsewhere. Ctrl+O open · Ctrl+W close tab · Ctrl+B sidebar · Ctrl+S save · Ctrl+Shift+S save as · Ctrl+P print · F5 reload · F11 fullscreen (Ctrl+Cmd+F on Mac) · Arrow/Home/End move between tabs · Delete closes the focused tab.
 
-**Supported extensions** include `.pdf .docx .doc .xlsx .xls .ods .csv .tsv .md .markdown .txt .json .xml .yaml .toml .ini .log .png .jpg .gif .svg .webp .bmp .ico .avif .mp4 .webm .ogv .mp3 .wav .ogg .m4a .flac .zip` and around 40 code extensions. An unrecognised extension is identified from the file's header bytes, so extensionless text still opens.
+**Supported extensions** include `.pdf .docx .doc .pptx .pptm .ppt .xlsx .xls .ods .csv .tsv .md .markdown .txt .json .xml .yaml .toml .ini .log .png .jpg .gif .svg .webp .bmp .ico .avif .mp4 .webm .ogv .mp3 .wav .ogg .m4a .flac .zip` and around 40 code extensions. An unrecognised extension is identified from the file's header bytes, so extensionless text still opens.
 
 ## How it works
 

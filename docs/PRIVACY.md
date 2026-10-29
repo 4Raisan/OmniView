@@ -14,9 +14,17 @@ OmniView blocks documents from loading external images, stylesheets, scripts and
 
 ## What is stored on the device
 
-Recent history is up to 25 entries of full file path, filename, byte size and a random identifier, written to `recent-files.json` in Electron's per-user data directory (`%APPDATA%/OmniView` on Windows, `~/.config/OmniView` on Linux, `~/Library/Application Support/OmniView` on macOS). Theme, text size and sidebar width are stored in the app's local storage. No document contents are copied there.
+Recent history is up to 25 entries of full file path, filename, byte size and a random identifier, written to `recent-files.json` in Electron's per-user data directory (`%APPDATA%/multi-viewer` on Windows, `~/.config/multi-viewer` on Linux, `~/Library/Application Support/multi-viewer` on macOS). Theme, text size and sidebar width are stored in the app's local storage. Neither holds document contents.
 
-**Clear History** (the × beside Recent Files in the sidebar) empties that list and rewrites `recent-files.json`. It does not delete the files themselves. Uninstalling leaves local history and preferences in place unless removed manually.
+**Clear History** (the × beside Recent Files in the sidebar) empties that list and rewrites `recent-files.json`. It does not delete the files themselves, and it does not delete recovered drafts. Uninstalling leaves local history and preferences in place unless removed manually.
+
+## Unsaved draft recovery
+
+While you edit, OmniView writes the unsaved text to a `drafts` folder inside the same per-user data directory, about two seconds after you stop typing. This is what allows an unexpected exit to offer your changes back. **These files contain your document text in plain, unencrypted JSON, readable by any process running as your user.** Each record also stores the file's original SHA-256 hash, a timestamp, and its BOM and line-ending settings; the filename is a hash of the path, not the path itself.
+
+A draft is deleted when you save, when you discard the recovery offer, when you close the tab or quit without unsaved changes, and when you type the text back to its original content. At startup OmniView also removes drafts older than seven days and keeps only the 20 most recent, so abandoned drafts do not accumulate. To remove them immediately, delete the `drafts` folder while OmniView is closed.
+
+Recovery is offered only for files opened from disk. Files opened through the browser-style picker without a path, and read-only formats, are never autosaved. If the file changed on disk after the draft was written, the offer says so and asks you to review before saving over it.
 
 ## Local installation
 
