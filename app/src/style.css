@@ -270,6 +270,12 @@ body {
   justify-content: center;
   width: 16px;
   height: 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
   border-radius: 3px;
   opacity: 0.6;
   margin-left: 2px;
@@ -1284,14 +1290,23 @@ body {
 .code-line { min-height: 1.6em; align-items: flex-start; }
 .line-code, .line-content { min-width: 0; }
 .line-content { white-space: pre-wrap; }
-.toolbar-nav-group { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.toolbar-nav-group, .toolbar-find-group { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .pdf-toolbar { flex-wrap: nowrap; min-width: max-content; }
 .context-toolbar { overflow-x: auto; overflow-y: hidden; flex-shrink: 0; }
 .pdf-viewer-wrapper { height: 100%; min-height: 0; overflow: auto; display: block; position: relative; padding: 24px; scroll-behavior: auto; overflow-anchor: none; }
-.pdf-page { position: relative; flex-shrink: 0; margin: 0 auto 24px; background: white; box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+.pdf-page { position: relative; flex-shrink: 0; margin: 0 auto 24px; background: white; box-shadow: 0 10px 30px rgba(0,0,0,.4); --total-scale-factor: 1; }
 .pdf-page:last-child { margin-bottom: 0; }
 .pdf-page:not(.rendered)::after { content: 'Loading page ' attr(data-page) '…'; position: absolute; top: 40px; left: 24px; color: #64748b; font-size: calc(13px * var(--font-scale, 1)); }
 .pdf-page-canvas { display: block; }
+/* pdf.js draws the text layer transparent over the canvas; only the search marks show. */
+.pdf-page .textLayer { position: absolute; inset: 0; overflow: clip; }
+.pdf-page .textLayer mark.pdf-match { background: rgba(250, 204, 21, .55); color: transparent; border-radius: 2px; }
+.pdf-find-count { min-width: 72px; text-align: center; }
+.zip-limit-notice { margin: 0 0 8px; padding: 8px 10px; border-radius: 6px; background: var(--bg-tertiary); color: var(--text-secondary); font-size: calc(12px * var(--font-scale, 1)); }
+.media-error { margin: 16px auto 0; max-width: 520px; }
+.pdf-password-form { display: flex; flex-direction: column; gap: 10px; align-items: center; padding: 32px 16px; text-align: center; }
+.pdf-password-form input { padding: 7px 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-size: calc(13px * var(--font-scale, 1)); min-width: 240px; }
+.pdf-password-error { color: var(--danger-color, #ef4444); font-size: calc(12px * var(--font-scale, 1)); min-height: 1.2em; }
 .app-sidebar { flex-shrink: 0; min-width: 0; }
 #sidebar-resize-handle { position: relative; width: 0; flex: 0 0 0; z-index: 60; cursor: col-resize; touch-action: none; }
 #sidebar-resize-handle::after { content: ''; position: absolute; left: -4px; top: 0; bottom: 0; width: 8px; }
