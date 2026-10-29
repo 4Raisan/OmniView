@@ -93,6 +93,15 @@ jobs:
         run: xvfb-run -a npm test
         env:
           MULTIVIEWER_EXECUTABLE: ${{ github.workspace }}/${{ matrix.executable }}
+      # The unpacked build is not what users download. Install the real NSIS setup on
+      # this disposable runner, check the installed app, then verify uninstall cleanup.
+      - name: Check the Windows installer artifact
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem release/OmniView-Setup-*.exe | Select-Object -First 1
+          if (-not $setup) { throw 'No NSIS setup executable was produced.' }
+          ./tooling/scripts/verify-windows-installer.ps1 -SetupPath $setup.FullName -InstallDir C:\omniview-ci
       - name: Upload failure traces
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
