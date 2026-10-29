@@ -80,7 +80,9 @@ try {
     Assert-That ((Get-ItemProperty -LiteralPath 'HKCU:\Software\MultiViewer\Capabilities\FileAssociations' -Name '.pdf' -ErrorAction SilentlyContinue).'.pdf' -eq 'MultiViewer.PDF') 'The capabilities key does not advertise .pdf.'
     Assert-That ((Get-ItemProperty -LiteralPath "HKCU:\Software\Classes\Applications\$ExecutableName\SupportedTypes" -Name '.pdf' -ErrorAction SilentlyContinue).'.pdf' -eq '') 'SupportedTypes does not list .pdf.'
     Assert-That ($null -ne (Get-ItemProperty -LiteralPath 'HKCU:\Software\Classes\.pdf\OpenWithProgids' -Name 'MultiViewer.PDF' -ErrorAction SilentlyContinue)) 'The .pdf OpenWithProgids entry is missing.'
-    Assert-That (-not (Test-Path -LiteralPath 'HKCU:\Software\Classes\Applications\Multi-Viewer.exe')) 'The legacy Multi-Viewer.exe registration was not cleaned up.'
+    $legacyCommand = Get-DefaultValue 'HKCU:\Software\Classes\Applications\Multi-Viewer.exe\shell\open\command'
+    Assert-That ($legacyCommand -and $legacyCommand.Contains($InstallDir)) 'The legacy PDF handler does not point to the current installation.'
+    Assert-That (-not (Test-Path -LiteralPath 'HKCU:\Software\Classes\Applications\Multi-Viewer.exe\SupportedTypes')) 'The legacy handler still advertises supported types.'
     Assert-That (@(Get-UninstallEntry).Count -eq $uninstallBefore + 1) 'Add/Remove Programs did not gain exactly one OmniView entry.'
     Assert-That ((Get-UserChoiceProgId) -eq $userChoiceBefore) 'The installer changed the user''s default PDF application.'
 

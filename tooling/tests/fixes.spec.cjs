@@ -700,7 +700,7 @@ test('a crash keeps an unsaved draft that the next launch offers to restore', as
 test('menu commands with no window do not throw in the main process', async () => {
   // destroy() fires 'closed' synchronously, so mainWindow is null while the
   // process is still alive. This reproduces the macOS state on every platform.
-  const windows = await application.evaluate(({ BrowserWindow, Menu }) => {
+  const windows = await application.evaluate(({ BrowserWindow, Menu, dialog }) => {
     const win = BrowserWindow.getAllWindows()[0];
     win.allowEditedClose = true;
     win.destroy();
@@ -708,8 +708,14 @@ test('menu commands with no window do not throw in the main process', async () =
     for (const label of ['Save text', 'Save text as…', 'Close document', 'Print…']) {
       file.find(item => item.label === label).click();
     }
-    Menu.getApplicationMenu().items.find(item => item.label === 'Help').submenu.items
-      .find(item => item.label === 'About OmniView').click();
+    const originalDialog = dialog.showMessageBox;
+    let aboutOpened = false;
+    dialog.showMessageBox = () => { aboutOpened = true; return Promise.resolve({ response: 0 }); };
+    try {
+      Menu.getApplicationMenu().items.find(item => item.label === 'Help').submenu.items
+        .find(item => item.label === 'About OmniView').click();
+    } finally { dialog.showMessageBox = originalDialog; }
+    if (!aboutOpened) throw new Error('About command did not open its dialog');
     return BrowserWindow.getAllWindows().length;
   });
   expect(windows).toBe(0);
