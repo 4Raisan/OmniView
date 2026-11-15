@@ -1,6 +1,10 @@
-<p align="center"><img src="docs/assets/logo.svg" alt="OmniView — Any File. One Viewer." width="440"></p>
+<p align="center"><img src="docs/assets/logo.svg" alt="OmniView — Any File. One Viewer." width="390"></p>
 
-View local files in one tabbed desktop app on Windows, Linux and macOS. Documents stay on your computer; viewing works offline.
+<p align="center">
+  <a href="https://github.com/4Raisan/OmniView/actions/workflows/ci.yml"><img src="https://github.com/4Raisan/OmniView/actions/workflows/ci.yml/badge.svg?branch=main" alt="OmniView desktop checks"></a>
+</p>
+
+<p align="center">View local files in one tabbed desktop app on Windows, Linux and macOS. Documents stay on your computer and viewing works offline.<br><a href="https://github.com/4Raisan/OmniView/releases/latest">Download OmniView</a></p>
 
 ## Download
 
