@@ -1,6 +1,6 @@
 <p align="center"><picture>
-    <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/logo-static.svg">
-    <img src="docs/assets/logo.svg" alt="OmniView — Any File. One Viewer." width="390">
+    <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/logo.svg">
+    <img src="docs/assets/logo-motion.svg" alt="OmniView — Any File. One Viewer." width="390">
   </picture></p>
 
 <p align="center">

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="444" height="122" viewBox="-4 7 444 122" role="img" aria-labelledby="title desc"><title id="title">OmniView</title><desc id="desc">OmniView — Any File. One Viewer.</desc><style>
+@media (prefers-color-scheme: dark){.tagline{fill:#a5b4cc}}
+.brand-mark{opacity:1}
+
+</style><g class="brand-mark" transform="translate(12 24) scale(1.4)"><rect width="64" height="64" rx="17" fill="#1268e8"/><circle cx="32" cy="32" r="19" fill="none" stroke="white" stroke-width="4"/><path d="M32 13v38M13 32h38" stroke="white" stroke-width="3"/><circle cx="32" cy="32" r="6" fill="#1268e8" stroke="white" stroke-width="3"/><path class="scan-ring" d="M32 6a26 26 0 0 1 26 26" fill="none" stroke="#a5f3fc" stroke-width="3" stroke-linecap="round"><animateTransform attributeName="transform" type="rotate" from="0 32 32" to="360 32 32" dur="3s" repeatCount="indefinite"/></path></g><text x="130" y="79" font-family="Segoe UI,Arial,sans-serif" font-size="58" font-weight="700" fill="#1268e8">OmniView</text><text x="132" y="112" font-family="Segoe UI,Arial,sans-serif" font-size="23" class="tagline" fill="#52617a">Any File. One Viewer.</text></svg>
