@@ -1,4 +1,7 @@
-<p align="center"><img src="docs/assets/logo.svg" alt="OmniView — Any File. One Viewer." width="390"></p>
+<p align="center"><picture>
+    <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/logo-static.svg">
+    <img src="docs/assets/logo.svg" alt="OmniView — Any File. One Viewer." width="390">
+  </picture></p>
 
 <p align="center">
   <a href="https://github.com/4Raisan/OmniView/actions/workflows/ci.yml"><img src="https://github.com/4Raisan/OmniView/actions/workflows/ci.yml/badge.svg?branch=main" alt="OmniView desktop checks"></a>
